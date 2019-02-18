@@ -1,0 +1,25 @@
+{
+	"name": "app-js",
+	"version": "0.0.0",
+	"description": "AppJS",
+	"private": true,
+	"main": "src/index.js",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fiddleplum/app-js.git"
+	},
+	"author": "Stephen Hurley",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/fiddleplum/app-js/issues"
+	},
+	"homepage": "https://github.com/fiddleplum/app-js",
+	"devDependencies": {
+		"eslint": "latest",
+		"eslint-config-standard": "latest",
+		"eslint-plugin-import": "latest",
+		"eslint-plugin-node": "latest",
+		"eslint-plugin-promise": "latest",
+		"eslint-plugin-standard": "latest"
+	}
+}
