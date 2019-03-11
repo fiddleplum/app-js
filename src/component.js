@@ -1,37 +1,52 @@
 class Component {
 	/**
-	 * Constructs a component at the location of the grid-area.
-	 * @param {string} gridArea
+	 * Constructs a component inside the parent element.
+	 * @param {HTMLElement} elem
 	 */
-	constructor(gridArea) {
+	constructor(elem) {
 		/**
-		 * The style element, if there is style.
+		 * The div element.
+		 * @type {HTMLElement}
+		 * @private
+		 */
+		this._elem = elem;
+
+		/**
+		 * The style element, which is added to the head, if there is style.
 		 * @type {HTMLStyleElement}
 		 * @private
 		 */
-		this._style = null;
+		this._style = document.querySelector('head style#' + this.constructor.name);
 
-		/**
-		 * The div element.
-		 * @type {HTMLDivElement}
-		 * @private
-		 */
-		this._div = document.createElement('div');
-		this._div.style.gridArea = gridArea;
-		this._div.style.width = '100%';
-		document.body.appendChild(this._div);
+		// Add the component's name to the class list.
+		this._elem.classList.add(this.constructor.name);
+
+		// Create the style if it doesn't already exist, and increment the use count.
+		if (this._style === null) {
+			this._style = document.createElement('style');
+			this._style.id = this.constructor.name;
+			this._style.attributes['useCount'] = 0;
+			document.head.appendChild(this._style);
+		}
+		this._style.attributes['useCount'] += 1;
 	}
 
 	/**
 	 * Destroys this when it is no longer needed. Call to clean up the object.
 	 */
 	destroy() {
-		if (this._style !== null) {
+		// Decrement the use count of the style element and remove it if the use count is zero.
+		this._style.attributes['useCount'] -= 1;
+		if (this._style.attributes['useCount'] === 0) {
+			let head = document.querySelector('head');
 			document.head.removeChild(this._style);
-			this._style = null;
 		}
-		document.body.removeChild(this._div);
-		this._div = null;
+
+		// Remove the component's name from the class list.
+		this._elem.classList.remove(this.constructor.name);
+
+		// Clear out any html from the parent element.
+		this._elem.innerHTML = '';
 	}
 
 	/**
@@ -39,10 +54,7 @@ class Component {
 	 * @returns {string}
 	 */
 	get __style() {
-		if (this._style !== null) {
-			return this._style.innerHTML;
-		}
-		return '';
+		return this._style.innerHTML;
 	}
 
 	/**
@@ -50,99 +62,40 @@ class Component {
 	 * @param {string} style
 	 */
 	set __style(style) {
-		if (style !== '') {
-			if (this._style === null) {
-				this._style = document.createElement('style');
-				document.head.appendChild(this._style);
-			}
+		// Set the style if this is the first element of its type.
+		if (this._style.attributes['useCount'] === 1) {
 			this._style.innerHTML = style;
 		}
-		else if (this._style !== null && style === '') {
-			document.head.removeChild(this._style);
-			this._style = null;
-		}
 	}
 
 	/**
-	 * Returns the div element that the component uses.
-	 * @returns {HTMLDivElement}
+	 * Returns the html that the component uses.
+	 * @returns {string}
 	 */
-	get __div() {
-		return this._div;
+	get __html() {
+		return this._elem.innerHTML;
 	}
 
 	/**
-	 * Shows an element in an animated way. The element must be a block display style.
-	 * @param {number} duration in seconds
+	 * Sets the html that the component uses.
+	 * @param {string} html
 	 */
-	async show(duration = 0.125) {
-		const fps = 30.0;
-		if (this._div.style.display !== 'block') {
-			this._div.style.opacity = '0';
-			this._div.style.display = 'block';
-			this._div.setAttribute('showing', '1');
-			return new Promise((resolve, reject) => {
-				const timer = setInterval((elem) => {
-					let u = Number.parseFloat(elem.style.opacity);
-					u += 1.0 / (duration * fps);
-					u = Math.min(u, 1.0);
-					elem.style.opacity = '' + u;
-					if (u >= 1.0) {
-						clearInterval(timer);
-						elem.removeAttribute('showing');
-						resolve();
-					}
-				}, 1000.0 / fps, this._div);
-			});
+	set __html(html) {
+		this._elem.innerHTML = html;
+	}
+
+	/**
+	 * Performs query selector on the component.
+	 * @param {string} selector
+	 * @param {boolean} [all=false]
+	 */
+	__query(selector, all = false) {
+		if (all) {
+			return this._elem.querySelectorAll(selector);
 		}
 		else {
-			return Promise.resolve();
+			return this._elem.querySelector(selector);
 		}
-	}
-
-	/**
-	 * Hides an element in an animated way. The element must be a block display style.
-	 * @param {number} duration in seconds
-	 */
-	async hide(duration = 0.125) {
-		const fps = 30.0;
-		if (this._div.style.display !== 'none') {
-			this._div.style.opacity = '1';
-			this._div.setAttribute('hiding', '1');
-			return new Promise((resolve, reject) => {
-				const timer = setInterval((elem) => {
-					let u = Number.parseFloat(elem.style.opacity);
-					u -= 1.0 / (duration * fps);
-					u = Math.max(u, 0.0);
-					elem.style.opacity = '' + u;
-					if (u <= 0.0) {
-						elem.style.display = 'none';
-						clearInterval(timer);
-						elem.removeAttribute('hiding');
-						resolve();
-					}
-				}, 1000.0 / fps, this._div);
-			});
-		}
-		else {
-			return Promise.resolve();
-		}
-	}
-
-	/**
-	 * Returns true if this is shown or showing.
-	 * @returns {boolean}
-	 */
-	isShown() {
-		return getComputedStyle(this._div, null).display !== 'none' && !this._div.hasAttribute('hiding');
-	}
-
-	/**
-	 * Returns true if this is hidden or hiding.
-	 * @returns {boolean}
-	 */
-	isHidden() {
-		return getComputedStyle(this._div, null).display === 'none' || this._div.hasAttribute('hiding');
 	}
 }
 
