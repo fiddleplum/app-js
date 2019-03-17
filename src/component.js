@@ -38,7 +38,6 @@ class Component {
 		// Decrement the use count of the style element and remove it if the use count is zero.
 		this._style.attributes['useCount'] -= 1;
 		if (this._style.attributes['useCount'] === 0) {
-			let head = document.querySelector('head');
 			document.head.removeChild(this._style);
 		}
 

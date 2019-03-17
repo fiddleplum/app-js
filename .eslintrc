@@ -12,5 +12,8 @@
 		"brace-style": ["error", "stroustrup"],
 		"yoda": "off",
 		"no-new": "off"
+	},
+	"env" : {
+		"browser": true
 	}
 }
