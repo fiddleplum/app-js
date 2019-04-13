@@ -18,14 +18,19 @@ class Component {
 		 */
 		this._style = document.querySelector('head style#' + this.constructor.name);
 
-		// Add the component's name to the class list.
-		this._elem.classList.add(this.constructor.name);
+		// Add the component's name and its ancestors to the class list.
+		let thisAncestor = this;
+		while (thisAncestor.constructor !== UIComponent) {
+			this._elem.classList.add(thisAncestor.constructor.name);
+			thisAncestor = Object.getPrototypeOf(thisAncestor);
+		}
 
 		// Create the style if it doesn't already exist, and increment the use count.
 		if (this._style === null) {
 			this._style = document.createElement('style');
 			this._style.id = this.constructor.name;
 			this._style.attributes['useCount'] = 0;
+			this._style.innerHTML = this.constructor.style || '';
 			document.head.appendChild(this._style);
 		}
 		this._style.attributes['useCount'] += 1;
@@ -41,60 +46,23 @@ class Component {
 			document.head.removeChild(this._style);
 		}
 
-		// Remove the component's name from the class list.
-		this._elem.classList.remove(this.constructor.name);
+		// Remove the component's name and its ancestors from the class list.
+		let thisAncestor = this;
+		while (thisAncestor.constructor !== UIComponent) {
+			this._elem.classList.remove(thisAncestor.constructor.name);
+			thisAncestor = Object.getPrototypeOf(thisAncestor);
+		}
 
 		// Clear out any html from the parent element.
 		this._elem.innerHTML = '';
 	}
 
 	/**
-	 * Returns the style that the component uses.
-	 * @returns {string}
+	 * Gets the elem that this component uses.
+	 * @returns {HTMLElement}
 	 */
-	get __style() {
-		return this._style.innerHTML;
-	}
-
-	/**
-	 * Sets the style that the component uses.
-	 * @param {string} style
-	 */
-	set __style(style) {
-		// Set the style if this is the first element of its type.
-		if (this._style.attributes['useCount'] === 1) {
-			this._style.innerHTML = style;
-		}
-	}
-
-	/**
-	 * Returns the html that the component uses.
-	 * @returns {string}
-	 */
-	get __html() {
-		return this._elem.innerHTML;
-	}
-
-	/**
-	 * Sets the html that the component uses.
-	 * @param {string} html
-	 */
-	set __html(html) {
-		this._elem.innerHTML = html;
-	}
-
-	/**
-	 * Performs query selector on the component.
-	 * @param {string} selector
-	 * @param {boolean} [all=false]
-	 */
-	__query(selector, all = false) {
-		if (all) {
-			return this._elem.querySelectorAll(selector);
-		}
-		else {
-			return this._elem.querySelector(selector);
-		}
+	get elem() {
+		return this._elem;
 	}
 }
 
