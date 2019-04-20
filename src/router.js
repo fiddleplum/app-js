@@ -133,7 +133,10 @@ class RoutePattern {
 	 */
 	match(route) {
 		for (let i = 0, l = this.patterns.length; i < l; i++) {
-			if (!this.patterns[i].test(i < route.length ? route[i] : '')) {
+			if (i >= route.length) {
+				break;
+			}
+			if (!this.patterns[i].test(route[i])) {
 				return false;
 			}
 		}

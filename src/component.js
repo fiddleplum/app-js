@@ -26,15 +26,19 @@ export default class Component {
 			this._elem.innerHTML = '';
 		}
 
-		// Add the component's name to the class list.
-		this._elem.classList.add(this.constructor.name);
+		// Add the component's name and its ancestors to the class list.
+		let thisAncestor = this;
+		while (thisAncestor.constructor !== UIComponent) {
+			this._elem.classList.add(thisAncestor.constructor.name);
+			thisAncestor = Object.getPrototypeOf(thisAncestor);
+		}
 
 		// Create the style if it doesn't already exist, and increment the use count.
 		if (this._styleElem === null && this.constructor.style !== undefined) {
 			this._styleElem = document.createElement('style');
 			this._styleElem.id = this.constructor.name;
-			this._styleElem.innerHTML = this.constructor.style;
 			this._styleElem.attributes['useCount'] = 0;
+			this._styleElem.innerHTML = this.constructor.style;
 			document.head.appendChild(this._styleElem);
 		}
 		this._styleElem.attributes['useCount'] += 1;
@@ -52,8 +56,12 @@ export default class Component {
 			}
 		}
 
-		// Remove the component's name from the class list.
-		this._elem.classList.remove(this.constructor.name);
+		// Remove the component's name and its ancestors from the class list.
+		let thisAncestor = this;
+		while (thisAncestor.constructor !== UIComponent) {
+			this._elem.classList.remove(thisAncestor.constructor.name);
+			thisAncestor = Object.getPrototypeOf(thisAncestor);
+		}
 
 		// Clear out any html from the parent element.
 		this._elem.innerHTML = '';
@@ -64,7 +72,7 @@ export default class Component {
 	 * @returns {HTMLElement}
 	 */
 	get elem() {
-		return this.elem;
+		return this._elem;
 	}
 }
 
