@@ -1,4 +1,4 @@
-export default class Component {
+export default class UIComponent {
 	/**
 	 * Constructs a component inside the parent element.
 	 * @param {HTMLElement} elem
@@ -80,10 +80,10 @@ export default class Component {
  * The HTML string, which is overridden by the subclass.
  * @type {string}
  */
-Component.html = '';
+UIComponent.html = '';
 
 /**
  * The style string, which is overidden by the subclass.
  * @type {string}
  */
-Component.style = '';
+UIComponent.style = '';

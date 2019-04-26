@@ -1,8 +1,7 @@
 import Router from './router';
+import UIComponent from './ui_component';
 
-/** @typedef {import ('./component').default} Component */
-
-class App {
+export default class App extends UIComponent {
 	/**
 	 * Sets the subclass of App to be instantiated. It should be called in the main script outside of any function.
 	 * @param {App} subclass
@@ -11,16 +10,32 @@ class App {
 		App._subclass = subclass;
 	}
 
-	constructor() {
+	/**
+	 * Constructs a component inside the parent element.
+	 * @param {HTMLElement} elem
+	 */
+	constructor(elem) {
+		super(elem);
+
+		// Make this global.
 		window.app = this;
 
 		/**
-		 * @type {Component}
+		 * The element where the page will reside.
+		 * @type {HTMLElement}
+		 * @private
+		 */
+		this._pageElem = null;
+
+		/**
+		 * The active page.
+		 * @type {UIComponent}
 		 * @private
 		 */
 		this._page = null;
 
 		/**
+		 * The router for registering routes and pages.
 		 * @type {Router}
 		 * @private
 		 */
@@ -28,12 +43,19 @@ class App {
 	}
 
 	/**
+	 * Sets the page element.
+	 * @param {HTMLElement} pageElem
+	 */
+	set pageElem(pageElem) {
+		this._pageElem = pageElem;
+	}
+
+	/**
 	 * @param {string} routeString
-	 * @param {function(HTMLElement, Map<string, string>):Component} PageClass
+	 * @param {function(HTMLElement, Map<string, string>):UIComponent} PageClass
 	 */
 	registerPage(routeString, PageClass) {
 		this._router.registerRoute(routeString, (route) => {
-			console.error(route);
 			/** @type {Map<string, string>} */
 			let options = new Map();
 			for (let i = routeString.split('/').length; i < route.length; i += 2) {
@@ -43,7 +65,7 @@ class App {
 				this._page.destroy();
 			}
 			try {
-				this._page = new PageClass(document.body.querySelector('#page'), options);
+				this._page = new PageClass(this._pageElem, options);
 			}
 			catch (error) {
 				console.error(error);
@@ -71,5 +93,3 @@ document.addEventListener('DOMContentLoaded', () => {
 		console.error(error);
 	}
 });
-
-export default App;

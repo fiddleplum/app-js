@@ -1,5 +1,6 @@
 import App from './app';
-import Component from './component';
+import SimpleApp from './simple_app';
+import UIComponent from './ui_component';
 import Router from './router';
 import ShowHide from './show_hide';
 import UniqueIds from './unique_ids';
@@ -7,7 +8,8 @@ import WS from './ws';
 
 export {
 	App,
-	Component,
+	SimpleApp,
+	UIComponent,
 	Router,
 	ShowHide,
 	UniqueIds,
