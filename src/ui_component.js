@@ -53,7 +53,7 @@ export default class UIComponent {
 		this._elem.innerHTML = '';
 
 		// Go through each of the component's ancestors,
-		let thisAncestor = this;
+		let thisAncestor = Object.getPrototypeOf(this);
 		while (thisAncestor.constructor !== UIComponent) {
 			// Remove the ancestor's name from the class list.
 			this._elem.classList.remove(thisAncestor.constructor.name);
