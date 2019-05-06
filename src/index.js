@@ -4,6 +4,7 @@ import UIComponent from './ui_component';
 import Router from './router';
 import ShowHide from './show_hide';
 import UniqueIds from './unique_ids';
+import Util from './util';
 import WS from './ws';
 
 export {
@@ -13,5 +14,6 @@ export {
 	Router,
 	ShowHide,
 	UniqueIds,
+	Util,
 	WS
 };

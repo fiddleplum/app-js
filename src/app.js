@@ -11,11 +11,10 @@ export default class App extends UIComponent {
 	}
 
 	/**
-	 * Constructs a component inside the parent element.
-	 * @param {HTMLElement} elem
+	 * Constructs a component inside the body.
 	 */
-	constructor(elem) {
-		super(elem);
+	constructor() {
+		super(document.body);
 
 		// Make this global.
 		window.app = this;
