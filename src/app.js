@@ -1,13 +1,13 @@
-import Router from './router';
-import UIComponent from './ui_component';
+import Container from './container';
+import Query from './query';
 
-export default class App extends UIComponent {
+export default class App extends Container {
 	/**
 	 * Sets the subclass of App to be instantiated. It should be called in the main script outside of any function.
-	 * @param {App} subclass
+	 * @param {App} appClass
 	 */
-	static setAppSubclass(subclass) {
-		App._subclass = subclass;
+	static setAppClass(appClass) {
+		App._appClass = appClass;
 	}
 
 	/**
@@ -16,64 +16,23 @@ export default class App extends UIComponent {
 	constructor() {
 		super(document.body);
 
+		/**
+		 * The query system.
+		 * @type {Query}
+		 * @private
+		 */
+		this._query = new Query();
+
 		// Make this global.
 		window.app = this;
-
-		/**
-		 * The element where the page will reside.
-		 * @type {HTMLElement}
-		 * @private
-		 */
-		this._pageElem = null;
-
-		/**
-		 * The active page.
-		 * @type {UIComponent}
-		 * @private
-		 */
-		this._page = null;
-
-		/**
-		 * The router for registering routes and pages.
-		 * @type {Router}
-		 * @private
-		 */
-		this._router = new Router();
 	}
 
 	/**
-	 * Sets the page element.
-	 * @param {HTMLElement} pageElem
+	 * Gets the query system.
+	 * @returns {Query}
 	 */
-	set pageElem(pageElem) {
-		this._pageElem = pageElem;
-	}
-
-	/**
-	 * @param {string} routeString
-	 * @param {function(HTMLElement, Map<string, string>):UIComponent} PageClass
-	 */
-	registerPage(routeString, PageClass) {
-		this._router.registerRoute(routeString, (route) => {
-			/** @type {Map<string, string>} */
-			let options = new Map();
-			for (let i = routeString.split('/').length; i < route.length; i += 2) {
-				options.set(route[i], route[i + 1]);
-			}
-			if (this._page !== null) {
-				this._page.destroy();
-			}
-			try {
-				this._page = new PageClass(this._pageElem, options);
-			}
-			catch (error) {
-				console.error(error);
-			}
-		});
-	}
-
-	goToPage(route) {
-		this._router.pushRoute(route);
+	get query() {
+		return this._query;
 	}
 }
 
@@ -82,11 +41,11 @@ export default class App extends UIComponent {
  * @type {App}
  * @private
  */
-App._subclass = App;
+App._appClass = App;
 
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('load', () => {
 	try {
-		new App._subclass();
+		new App._appClass();
 	}
 	catch (error) {
 		console.error(error);

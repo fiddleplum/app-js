@@ -11,7 +11,8 @@
 		}],
 		"brace-style": ["error", "stroustrup"],
 		"yoda": "off",
-		"no-new": "off"
+		"no-new": "off",
+		"no-unused-vars": ["error", { "vars": "local" }]
 	},
 	"env" : {
 		"browser": true

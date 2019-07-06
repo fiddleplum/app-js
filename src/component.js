@@ -1,15 +1,15 @@
 /**
- * A base UI component from which other components can extend.
+ * A base component from which other components can extend.
  * Each subclass can have an `html` and a `style` property to add style to the components.
  * Only the most derived subclass's `html` property will be used.
  */
-export default class UIComponent {
+export default class Component {
 	/**
-	 * Constructs a component inside the parent element.
-	 * @param {HTMLElement} elem
+	 * Constructs a component.
+	 * @param {HTMLElement} elem - The element inside which thee the component will reside.
 	 */
 	constructor(elem) {
-		if (elem === null || elem === undefined) {
+		if (elem === undefined) {
 			throw new Error('No element was specified in which to create the ' + this.constructor.name);
 		}
 
@@ -22,7 +22,7 @@ export default class UIComponent {
 
 		// Go through each of the component's ancestors,
 		let thisAncestor = Object.getPrototypeOf(this);
-		while (thisAncestor.constructor !== UIComponent) {
+		while (thisAncestor.constructor !== Component) {
 			// Add the ancestor's name to the class list.
 			this._elem.classList.add(thisAncestor.constructor.name);
 
@@ -54,7 +54,7 @@ export default class UIComponent {
 
 		// Go through each of the component's ancestors,
 		let thisAncestor = this;
-		while (thisAncestor.constructor !== UIComponent) {
+		while (thisAncestor.constructor !== Component) {
 			// Remove the ancestor's name from the class list.
 			this._elem.classList.remove(thisAncestor.constructor.name);
 

@@ -4,6 +4,14 @@
 	"description": "AppJS",
 	"private": false,
 	"main": "src/index.js",
+	"scripts": {
+		"setup": "yarn install --pure-lockfile",
+		"update": "yarn install",
+		"rsync_www": "mkdir -p dist; rsync -r --delete --exclude=\"config.js\" www/ dist/",
+		"wp": "webpack --mode development --devtool inline-cheap-source-map --output-filename index.js",
+		"build": "yarn rsync_www; webpack --mode development --devtool inline-cheap-source-map --output-filename index.js",
+		"build-production": "yarn rsync_www; webpack --mode production --output-filename index.js"
+	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/fiddleplum/app-js.git"
@@ -14,6 +22,9 @@
 		"url": "https://github.com/fiddleplum/app-js/issues"
 	},
 	"homepage": "https://github.com/fiddleplum/app-js",
+	"dependencies": {
+		"fontmetrics": "latest"
+	},
 	"devDependencies": {
 		"eslint": "latest",
 		"eslint-config-standard": "latest",

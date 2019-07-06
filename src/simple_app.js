@@ -1,18 +1,42 @@
 import App from './app';
+/** @typedef {import('./component').default} Component */
 
 export default class SimpleApp extends App {
 	constructor() {
 		super();
 
-		this.pageElem = document.body.querySelector('#page');
-	}
+		/**
+		 * A mapping from queries to pages.
+		 * @type {Map<Object<string, string>, (elem:HTMLElement, app:SimpleApp) => Component>}
+		 * @private
+		 */
+		this._queriesToPages = new Map();
 
-	/**
-	 * Gets the title HTML.
-	 * @returns {string}
-	 */
-	get title() {
-		return document.body.querySelector('#title').innerHTML;
+		// Set the callback to compare the given query to the matched queries.
+		// If there are multiple matches, it chooses the first longest match.
+		this.query.setCallback((query) => {
+			let bestQueryToMatch;
+			for (const queryToMatch of this._queriesToPages.keys()) {
+				let matched = true;
+				for (const key in queryToMatch) {
+					if (query[key] !== queryToMatch[key]) {
+						matched = false;
+						break;
+					}
+				}
+				if (!matched) {
+					continue;
+				}
+				if (!bestQueryToMatch || Object.keys(bestQueryToMatch).length < Object.keys(queryToMatch).length) {
+					bestQueryToMatch = queryToMatch;
+				}
+			}
+			if (bestQueryToMatch) {
+				const PageClass = this._queriesToPages.get(bestQueryToMatch);
+				this.__removeComponent('page');
+				this.__addComponent('page', PageClass, 'page', this);
+			}
+		});
 	}
 
 	/**
@@ -20,7 +44,16 @@ export default class SimpleApp extends App {
 	 * @param {string} title
 	 */
 	set title(title) {
-		document.body.querySelector('#title').innerHTML = title;
+		this.elem.querySelector('#title').innerHTML = '<a href="">' + title + '</a>';
+	}
+
+	/**
+	 * Registers a component as a page connected to a query.
+	 * @param {Object<string, string>} queryToMatch
+	 * @param {(elem:HTMLElement, app:SimpleApp) => Component} PageClass
+	 */
+	registerPage(queryToMatch, PageClass) {
+		this._queriesToPages.set(queryToMatch, PageClass);
 	}
 }
 
@@ -54,7 +87,8 @@ SimpleApp.style = `
 	}
 	.SimpleApp > #title a {
 		color: var(--fg-dark);
+		text-decoration: none;
 	}
 `;
 
-App.setAppSubclass(SimpleApp);
+App.setAppClass(SimpleApp);
