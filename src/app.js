@@ -36,6 +36,26 @@ export default class App extends Container {
 	}
 }
 
+App.style = `
+	* {
+		box-sizing: border-box;
+	}
+
+	.vertical-align {
+		display: flex;
+		justify-content: center;
+		flex-direction: column;
+	}
+
+	.no-select {
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		-moz-user-select: none;
+		-ms-user-select: none;
+		user-select: none;
+	}
+	`;
+
 /**
  * The subclass of App to be instantiated.
  * @type {App}
