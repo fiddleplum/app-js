@@ -22,6 +22,7 @@ export default class Component {
 
 		// Go through each of the component's ancestors,
 		let thisAncestor = Object.getPrototypeOf(this);
+		let lastStyleElem = null;
 		while (thisAncestor.constructor !== Component) {
 			// Add the ancestor's name to the class list.
 			this._elem.classList.add(thisAncestor.constructor.name);
@@ -34,9 +35,10 @@ export default class Component {
 					styleElem.id = thisAncestor.constructor.name;
 					styleElem.useCount = 0;
 					styleElem.innerHTML = thisAncestor.constructor.style;
-					document.head.appendChild(styleElem);
+					document.head.insertBefore(styleElem, lastStyleElem);
 				}
 				styleElem.useCount += 1;
+				lastStyleElem = styleElem;
 			}
 			thisAncestor = Object.getPrototypeOf(thisAncestor);
 		}
