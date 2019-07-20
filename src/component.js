@@ -41,8 +41,17 @@ export default class Component {
 			thisAncestor = Object.getPrototypeOf(thisAncestor);
 		}
 
+		// Setup the rendered variables.
+		/** @type {string} */
+		let processedHTML = this.constructor.html || '';
+		const searchRegExp = /{{([a-zA-Z_][a-zA-Z0-9_]+)}}/g;
+		let match;
+		while ((match = searchRegExp.exec(processedHTML)) !== null) {
+			processedHTML = processedHTML.substr(0, match.index) + '<span id="var_' + match[1] + '"></span>' + processedHTML.substr(searchRegExp.lastIndex);
+		}
+
 		// Set the html.
-		this._elem.innerHTML = this.constructor.html || '';
+		this._elem.innerHTML = processedHTML;
 	}
 
 	/**
@@ -78,5 +87,27 @@ export default class Component {
 	 */
 	get elem() {
 		return this._elem;
+	}
+
+	/**
+	 * Sets an event listener on the element with the id.
+	 * @param {string} id
+	 * @param {string} event
+	 * @param {(event:Event) => {}} listener
+	 */
+	on(id, event, listener) {
+		this._elem.querySelector('#' + id).addEventListener(event, listener);
+	}
+
+	/**
+	 * Sets a render variable.
+	 * @param {string} name
+	 * @param {string} value
+	 */
+	setRenderVar(name, value) {
+		const spanElems = this.elem.querySelectorAll('span#var_' + name);
+		for (const spanElem of spanElems) {
+			spanElem.innerHTML = value;
+		}
 	}
 }
