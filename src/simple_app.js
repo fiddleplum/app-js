@@ -33,8 +33,8 @@ export default class SimpleApp extends App {
 			}
 			if (bestQueryToMatch) {
 				const PageClass = this._queriesToPages.get(bestQueryToMatch);
-				this.__removeComponent('page');
-				this.__addComponent('page', PageClass, 'page', this);
+				this.__unsetComponent('page');
+				this.__setComponent(PageClass, 'page', this);
 			}
 		});
 	}

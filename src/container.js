@@ -5,14 +5,14 @@ import Component from './component';
  */
 export default class Container extends Component {
 	/**
-	 * Constructs a view inside the parent element.
+	 * Constructs a container inside the parent element.
 	 * @param {HTMLElement} elem
 	 */
 	constructor(elem) {
 		super(elem);
 
 		/**
-		 * The mapping of names to components.
+		 * The mapping of elemIds to components.
 		 * @type {Map<string, Component>}
 		 * @private
 		 */
@@ -20,43 +20,53 @@ export default class Container extends Component {
 	}
 
 	/**
-	 * Gets a component. Returns undefined if there is no component with that name.
-	 * @param {string} name
+	 * Destroys this when it is no longer needed. Call to clean up the object.
+	 */
+	destroy() {
+		for (const component of this._components.values()) {
+			component.destroy();
+		}
+		super.destroy();
+	}
+
+	/**
+	 * Gets the component at the element with the id of *elemId*. Returns undefined if there is no component at the element.
+	 * @param {string} elemId
 	 * @returns {Component}
 	 */
-	__getComponent(name) {
-		const component = this._components.get(name);
+	__getComponent(elemId) {
+		const component = this._components.get(elemId);
 		return component;
 	}
 
 	/**
-	 * Removes a component. Does nothing if there is no component with that name.
-	 * @param {string} name
+	 * Unsets (removes) the component at the element with the id of *elemId*. Does nothing if there is no component at that element.
+	 * @param {string} elemId
 	 */
-	__removeComponent(name) {
-		const component = this._components.get(name);
+	__unsetComponent(elemId) {
+		const component = this._components.get(elemId);
 		if (component) {
 			component.destroy();
+			this._components.delete(elemId);
 		}
-		this._components.delete(name);
 	}
 
 	/**
-	 * Adds a component. Throws an Error if there is a component with that name or if the component's constructor throws an error.
+	 * Sets a new component at the element with the id of *elemId*. If there is already a component at that element, the component is first removed.
 	 * @template ComponentType
-	 * @param {string} name
 	 * @param {new (elem:string, ...) => ComponentType} ComponentType
 	 * @param {string} elemId
 	 * @param {...any} params
 	 * @returns {ComponentType}
 	 */
-	__addComponent(name, ComponentType, elemId, ...params) {
-		const component = this._components.get(name);
+	__setComponent(ComponentType, elemId, ...params) {
+		const component = this._components.get(elemId);
 		if (component) {
-			throw new Error('A component with the name ' + name + ' already exists.');
+			component.destroy();
+			this._components.delete(elemId);
 		}
 		const newComponent = new ComponentType(this.elem.querySelector('#' + elemId), ...params);
-		this._components.set(name, newComponent);
+		this._components.set(elemId, newComponent);
 		return newComponent;
 	}
 }

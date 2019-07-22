@@ -1,3 +1,5 @@
+import State from './state';
+
 /**
  * A base component from which other components can extend.
  * Each subclass can have an `html` and a `style` property to add style to the components.
@@ -14,11 +16,18 @@ export default class Component {
 		}
 
 		/**
-		 * The HTML element that this component uses.
+		 * The HTML element that this component is inside.
 		 * @type {HTMLElement}
 		 * @private
 		 */
 		this._elem = elem;
+
+		/**
+		 * The state of the component.
+		 * @type {State}
+		 * @private
+		 */
+		this._renderState = new State();
 
 		// Go through each of the component's ancestors,
 		let thisAncestor = Object.getPrototypeOf(this);
@@ -46,10 +55,17 @@ export default class Component {
 		// Setup the rendered variables.
 		/** @type {string} */
 		let processedHTML = this.constructor.html || '';
-		const searchRegExp = /{{([a-zA-Z_][a-zA-Z0-9_]+)}}/g;
+		const searchRegExp = /{{([a-zA-Z_][a-zA-Z0-9_]+(\[[0-9]+\])?)}}/g;
 		let match;
 		while ((match = searchRegExp.exec(processedHTML)) !== null) {
-			processedHTML = processedHTML.substr(0, match.index) + '<span id="var_' + match[1] + '"></span>' + processedHTML.substr(searchRegExp.lastIndex);
+			const name = match[1];
+			processedHTML = processedHTML.substr(0, match.index) + '<span id="var_' + name + '"></span>' + processedHTML.substr(searchRegExp.lastIndex);
+			this._renderState.addListener(name, (name, oldValue, newValue) => {
+				const spanElems = this.elem.querySelectorAll('span#var_' + name);
+				for (const spanElem of spanElems) {
+					spanElem.innerHTML = newValue;
+				}
+			});
 		}
 
 		// Set the html.
@@ -106,10 +122,7 @@ export default class Component {
 	 * @param {string} name
 	 * @param {string} value
 	 */
-	setRenderVar(name, value) {
-		const spanElems = this.elem.querySelectorAll('span#var_' + name);
-		for (const spanElem of spanElems) {
-			spanElem.innerHTML = value;
-		}
+	setRenderState(name, value) {
+		this._renderState.set(name, value);
 	}
 }
