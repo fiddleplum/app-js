@@ -1,9 +1,11 @@
 import UniqueIds from './unique_ids';
 
 /**
- * This callback is displayed as a global member.
- * @callback receivedPromiseResolve
- * @param {*} data
+ * @typedef {object} ResponseData
+ * @property {number} id
+ * @property {boolean} success
+ * @property {string} error
+ * @property {any} data
  */
 
 /**
@@ -38,7 +40,7 @@ class WS {
 
 		/**
 		 * The list of active sent messages awaiting a received message.
-		 * @type {Map<number, {receivedPromiseResolve, receivedPromiseReject}>}
+		 * @type {Map<number, { resolve: (data:any) => {}, reject: (error:string) => {})}>}
 		 * @private
 		 */
 		this._activeSends = new Map();
@@ -57,11 +59,12 @@ class WS {
 			console.log('received ' + message.data);
 
 			// Get the json and the id.
-			let json = JSON.parse(message.data);
-			let id = json.id;
+			/** @type {ResponseData} */
+			const json = JSON.parse(message.data);
+			const id = json.id;
 
 			// Get the function to be resolved using the id in the json.
-			let { resolve, reject } = this._activeSends.get(id);
+			const { resolve, reject } = this._activeSends.get(id);
 
 			if (json.success === false) {
 				reject(json.error);
@@ -81,7 +84,7 @@ class WS {
 
 	/**
 	 * Gets the promise that resolves when the web socket is ready to be used.
-	 * @returns {Promise}
+	 * @returns {Promise<void>}
 	 */
 	getReadyPromise() {
 		return this._readyPromise;
@@ -96,7 +99,7 @@ class WS {
 
 	/**
 	 * Sends the JSON data along the web socket. Returns a promise resolving with response JSON data.
-	 * @param {object} data
+	 * @param {any} data
 	 * @returns {Promise}
 	 */
 	send(data) {
