@@ -114,7 +114,7 @@ export default class Component {
 	 * @param {(event:Event) => {}} listener
 	 */
 	on(id, event, listener) {
-		this._elem.querySelector('#' + id).addEventListener(event, listener);
+		this._elem.querySelector('#' + id).addEventListener(event, listener.bind(this));
 	}
 
 	/**
@@ -124,5 +124,31 @@ export default class Component {
 	 */
 	setRenderState(name, value) {
 		this._renderState.set(name, value);
+	}
+
+	/**
+	 * Creates an element.
+	 * @param {string} tag
+	 * @param {string} id
+	 * @param {string|string[]} classNames
+	 * @param {Object<string, EventListener>} eventListeners
+	 */
+	createElement(tag, id, classNames, eventListeners) {
+		const elem = document.createElement(tag);
+		if (id !== '') {
+			elem.id = id;
+		}
+		if (typeof classNames === 'string' && classNames !== '') {
+			elem.classList.add(classNames);
+		}
+		else if (Array.isArray(classNames)) {
+			for (let i = 0; i < classNames.length; i++) {
+				elem.classList.add(classNames[i]);
+			}
+		}
+		for (const type of Object.keys(eventListeners)) {
+			elem.addEventListener(type, eventListeners[type].bind(this));
+		}
+		return elem;
 	}
 }

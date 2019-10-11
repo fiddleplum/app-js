@@ -1,5 +1,5 @@
 import Container from './container';
-import Query from './query';
+import Router from './router';
 
 export default class App extends Container {
 	/**
@@ -17,22 +17,22 @@ export default class App extends Container {
 		super(document.body);
 
 		/**
-		 * The query system.
-		 * @type {Query}
+		 * The router system.
+		 * @type {Router}
 		 * @private
 		 */
-		this._query = new Query();
+		this._router = new Router();
 
 		// Make this global.
 		window.app = this;
 	}
 
 	/**
-	 * Gets the query system.
-	 * @returns {Query}
+	 * Gets the router system.
+	 * @returns {Router}
 	 */
-	get query() {
-		return this._query;
+	get router() {
+		return this._router;
 	}
 }
 

@@ -6,37 +6,21 @@ export default class SimpleApp extends App {
 		super();
 
 		/**
-		 * A mapping from queries to pages.
-		 * @type {Map<Object<string, string>, (elem:HTMLElement, app:SimpleApp) => Component>}
+		 * A mapping from page names to page components.
+		 * @type {Map<string, (elem:HTMLElement, app:SimpleApp) => Component>}
 		 * @private
 		 */
-		this._queriesToPages = new Map();
+		this._pages = new Map();
 
-		// Set the callback to compare the given query to the matched queries.
-		// If there are multiple matches, it chooses the first longest match.
-		this.query.setCallback((query) => {
-			let bestQueryToMatch;
-			for (const queryToMatch of this._queriesToPages.keys()) {
-				let matched = true;
-				for (const key in queryToMatch) {
-					if (query[key] !== queryToMatch[key]) {
-						matched = false;
-						break;
-					}
-				}
-				if (!matched) {
-					continue;
-				}
-				if (!bestQueryToMatch || Object.keys(bestQueryToMatch).length < Object.keys(queryToMatch).length) {
-					bestQueryToMatch = queryToMatch;
-				}
-			}
-			if (bestQueryToMatch) {
-				const PageClass = this._queriesToPages.get(bestQueryToMatch);
-				this.__unsetComponent('page');
-				this.__setComponent(PageClass, 'page', this);
-			}
-		});
+		/**
+		 * The currnent page.
+		 * @type {Component}
+		 * @private
+		 */
+		this._page = null;
+
+		// Setup the router callback.
+		this.router.setCallback(this._processQuery.bind(this));
 	}
 
 	/**
@@ -44,21 +28,41 @@ export default class SimpleApp extends App {
 	 * @param {string} title
 	 */
 	set title(title) {
-		this.elem.querySelector('#title').innerHTML = '<a href="">' + title + '</a>';
+		this.elem.querySelector('#title a').innerHTML = title;
+	}
+
+	set message(message) {
+		this.elem.querySelector('#message').innerHTML = message;
 	}
 
 	/**
-	 * Registers a component as a page connected to a query.
-	 * @param {Object<string, string>} queryToMatch
+	 * Registers a component as a page.
+	 * @param {string} pageName
 	 * @param {(elem:HTMLElement, app:SimpleApp) => Component} PageClass
 	 */
-	registerPage(queryToMatch, PageClass) {
-		this._queriesToPages.set(queryToMatch, PageClass);
+	registerPage(pageName, PageClass) {
+		this._pages.set(pageName, PageClass);
+	}
+
+	/**
+	 * Processes a query, loading a page.
+	 * @param {Object<string, string>} query
+	 * @private
+	 */
+	_processQuery(query) {
+		const pageName = query.page || '';
+		const Page = this._pages.get(pageName);
+		if (Page === undefined) {
+			this.message = 'Page not found. Return to <a href=".">home</a>.';
+			return;
+		}
+		this._page = new Page(document.querySelector('#page'), this);
 	}
 }
 
 SimpleApp.html = `
-	<div id="title"></div>
+	<div id="title"><a href="."></a></div>
+	<div id="message"></div>
 	<div id="page"></div>
 	`;
 
@@ -80,14 +84,22 @@ SimpleApp.style = `
 	.SimpleApp > #title {
 		grid-area: title;
 		text-align: center;
-		font-size: 1em;
-		line-height: 2em;
 		background: var(--bg-dark);
 		color: var(--fg-dark);
 	}
 	.SimpleApp > #title a {
 		color: var(--fg-dark);
 		text-decoration: none;
+	}
+	.SimpleApp > #title a:hover {
+		text-decoration: underline;
+	}
+	.SimpleApp > #message a {
+		color: var(--fg-dark);
+		text-decoration: none;
+	}
+	.SimpleApp > #message a:hover {
+		text-decoration: underline;
 	}
 `;
 
