@@ -13,7 +13,7 @@ export default class SimpleApp extends App {
 		this._pages = new Map();
 
 		/**
-		 * The currnent page.
+		 * The current page.
 		 * @type {Component}
 		 * @private
 		 */
@@ -31,7 +31,12 @@ export default class SimpleApp extends App {
 		this.elem.querySelector('#title a').innerHTML = title;
 	}
 
+	/**
+	 * Sets the message HTML.
+	 * @param {string} message
+	 */
 	set message(message) {
+		console.log(message);
 		this.elem.querySelector('#message').innerHTML = message;
 	}
 
@@ -56,6 +61,9 @@ export default class SimpleApp extends App {
 			this.message = 'Page not found. Return to <a href=".">home</a>.';
 			return;
 		}
+		if (this._page !== null) {
+			this._page.destroy();
+		}
 		this._page = new Page(document.querySelector('#page'), this);
 	}
 }
@@ -67,40 +75,62 @@ SimpleApp.html = `
 	`;
 
 SimpleApp.style = `
+	body {
+		margin: 0;
+		min-height: 100vh;
+	}
 	.SimpleApp {
 		margin: 0;
 		width: 100%;
 		height: 100%;
 		display: grid;
-		grid-template-columns: 1fr;
-		grid-template-rows: 2em 2em 1fr;
+		grid-template-columns: 1fr 1fr;
+		grid-template-rows: 2rem 1fr;
 		grid-template-areas:
-			"title"
-			"message"
-			"page";
-		background: var(--bg-light);
-		color: var(--fg-light);
+			"title message"
+			"page page";
 	}
 	.SimpleApp > #title {
 		grid-area: title;
-		text-align: center;
-		background: var(--bg-dark);
-		color: var(--fg-dark);
+		padding: 0.25rem;
+		font-size: 1.5rem;
+		line-height: 1.5rem;
 	}
 	.SimpleApp > #title a {
-		color: var(--fg-dark);
+		color: inherit;
 		text-decoration: none;
 	}
 	.SimpleApp > #title a:hover {
 		text-decoration: underline;
 	}
+	.SimpleApp > #message {
+		grid-area: message;
+		text-align: right;
+		line-height: 1rem;
+		padding: .5rem;
+	}
 	.SimpleApp > #message a {
-		color: var(--fg-dark);
+		color: inherit;
 		text-decoration: none;
 	}
 	.SimpleApp > #message a:hover {
 		text-decoration: underline;
 	}
-`;
+	.SimpleApp > #page {
+		position: relative;
+		grid-area: page;
+		width: calc(100% - 2rem);
+		max-width: 50rem;
+		margin: 1rem auto 0 auto;
+	}
+	.SimpleApp > #page.fadeOut {
+		opacity: 0;
+		transition: opacity .125s;
+	}
+	.SimpleApp > #page.fadeIn {
+		opacity: 1;
+		transition: opacity .125s;
+	}
+	`;
 
 App.setAppClass(SimpleApp);

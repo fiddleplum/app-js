@@ -131,9 +131,10 @@ export default class Component {
 	 * @param {string} tag
 	 * @param {string} id
 	 * @param {string|string[]} classNames
+	 * @param {string} html
 	 * @param {Object<string, EventListener>} eventListeners
 	 */
-	createElement(tag, id, classNames, eventListeners) {
+	createElement(tag, id, classNames, html, eventListeners) {
 		const elem = document.createElement(tag);
 		if (id !== '') {
 			elem.id = id;
@@ -146,9 +147,52 @@ export default class Component {
 				elem.classList.add(classNames[i]);
 			}
 		}
+		if (html !== '') {
+			elem.innerHTML = html;
+		}
 		for (const type of Object.keys(eventListeners)) {
 			elem.addEventListener(type, eventListeners[type].bind(this));
 		}
 		return elem;
+	}
+
+	/**
+	 * Gets the element with the id. If id is undefined, it returns the root.
+	 * @param {string} id
+	 * @returns {HTMLElement}
+	 */
+	get(id) {
+		if (id !== undefined) {
+			return this._elem.querySelector('#' + id);
+		}
+		else {
+			return this._elem;
+		}
+	}
+
+	/**
+	 * Sets the class for an element.
+	 * @param {string} id - id of the element.
+	 * @param {string} className - class to set.
+	 * @param {boolean} enabled - set if true, unset if false.
+	 */
+	setClass(id, className, enabled) {
+		const elem = this._elem.querySelector('#' + id);
+		if (enabled) {
+			elem.classList.add(className);
+		}
+		else {
+			elem.classList.remove(className);
+		}
+	}
+
+	/**
+	 * Sets the html for an element.
+	 * @param {string} id
+	 * @param {string} html
+	 */
+	setSetHtml(id, html) {
+		const elem = this._elem.querySelector('#' + id);
+		elem.innerHTML = html;
 	}
 }

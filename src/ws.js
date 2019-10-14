@@ -67,7 +67,7 @@ class WS {
 			const { resolve, reject } = this._activeSends.get(id);
 
 			if (json.success === false) {
-				reject(json.error);
+				reject(new Error(json.error));
 			}
 
 			// Remove the id from the actively sending message list and release the id.

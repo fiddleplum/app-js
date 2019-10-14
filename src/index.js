@@ -7,7 +7,6 @@ import Router from './router';
 import ShowHide from './show_hide';
 import State from './state';
 import UniqueIds from './unique_ids';
-import Util from './util';
 import WS from './ws';
 
 export {
@@ -20,6 +19,5 @@ export {
 	ShowHide,
 	State,
 	UniqueIds,
-	Util,
 	WS
 };

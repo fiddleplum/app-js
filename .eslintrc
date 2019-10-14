@@ -6,13 +6,11 @@
 		"semi": ["error", "always"],
 		"space-before-function-paren": ["error", {
 			"anonymous": "always",
-			"named": "never",
-			"asyncArrow": "always"
+			"asyncArrow": "always",
+			"named": "never"
 		}],
 		"brace-style": ["error", "stroustrup"],
-		"yoda": "off",
-		"no-new": "off",
-		"no-unused-vars": ["error", { "vars": "local" }]
+		"yoda": "off"
 	},
 	"env" : {
 		"browser": true
