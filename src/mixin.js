@@ -20,7 +20,7 @@ export default class Mixin {
 		for (const mixin of mixins) {
 			Mixin._copyProps(combined.prototype, mixin.prototype);
 			Mixin._copyProps(combined, mixin);
-		};
+		}
 		return combined;
 	}
 
