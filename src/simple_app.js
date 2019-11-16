@@ -1,4 +1,5 @@
 import App from './app';
+import ShowHide from './show_hide';
 /** @typedef {import('./component').default} Component */
 
 export default class SimpleApp extends App {
@@ -20,7 +21,7 @@ export default class SimpleApp extends App {
 		this._page = null;
 
 		// Setup the router callback.
-		this.router.setCallback(this._processQuery.bind(this));
+		this.router.addCallback(this._processQuery.bind(this));
 	}
 
 	/**
@@ -54,17 +55,28 @@ export default class SimpleApp extends App {
 	 * @param {Object<string, string>} query
 	 * @private
 	 */
-	_processQuery(query) {
-		const pageName = query.page || '';
-		const Page = this._pages.get(pageName);
-		if (Page === undefined) {
-			this.message = 'Page not found. Return to <a href=".">home</a>.';
-			return;
+	async _processQuery(query) {
+		try {
+			const pageName = query.page || '';
+			const Page = this._pages.get(pageName);
+			if (Page === undefined) {
+				this.message = 'Page not found. Return to <a href=".">home</a>.';
+				return;
+			}
+			// If it's the same page, do nothing.
+			if (this._page instanceof Page) {
+				return;
+			}
+			if (this._page !== null) {
+				await ShowHide.hide(this._page.elem);
+				this._page.destroy();
+			}
+			this._page = new Page(document.querySelector('#page'), this);
+			await ShowHide.show(this._page.elem);
 		}
-		if (this._page !== null) {
-			this._page.destroy();
+		catch (e) {
+			console.log(e);
 		}
-		this._page = new Page(document.querySelector('#page'), this);
 	}
 }
 

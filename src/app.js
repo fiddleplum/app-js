@@ -1,7 +1,7 @@
-import Container from './container';
+import Component from './component';
 import Router from './router';
 
-export default class App extends Container {
+export default class App extends Component {
 	/**
 	 * Sets the subclass of App to be instantiated. It should be called in the main script outside of any function.
 	 * @param {App} appClass
@@ -65,6 +65,7 @@ App._appClass = App;
 
 window.addEventListener('load', () => {
 	try {
+		// eslint-disable-next-line no-new
 		new App._appClass();
 	}
 	catch (error) {

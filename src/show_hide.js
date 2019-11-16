@@ -60,6 +60,20 @@ class ShowHide {
 	}
 
 	/**
+	 * Toggles an element in an animated way. The element must be a block display style.
+	 * @param {HTMLElement} element
+	 * @param {number} duration in seconds
+	 */
+	static async toggle(element, duration) {
+		if (this.isShown(element)) {
+			return this.hide(element, duration);
+		}
+		else {
+			return this.show(element, duration);
+		}
+	}
+
+	/**
 	 * Returns true if this is shown or showing.
 	 * @param {HTMLElement} element
 	 * @returns {boolean}
@@ -74,7 +88,7 @@ class ShowHide {
 	 * @returns {boolean}
 	 */
 	static isHidden(element) {
-		return getComputedStyle(element, null).display === 'none' || element.hasAttribute('hiding');
+		return !this.isShown();
 	}
 }
 

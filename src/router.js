@@ -2,6 +2,15 @@
  * A router that supports query strings, pushing and replacing using the history API.
  */
 export default class Router {
+	/**
+	 * @callback Callback
+	 * @param {Object<string, string>} query
+	 * @returns {void}
+	 */
+
+	/**
+	 * The constructor.
+	 */
 	constructor() {
 		/**
 		 * The current query.
@@ -12,10 +21,10 @@ export default class Router {
 
 		/**
 		 * The callback to be called when the query changes.
-		 * @type {(query:Object<string, string>) => void}
+		 * @type {Callback[]}
 		 * @private
 		 */
-		this._callback = undefined;
+		this._callbacks = [];
 
 		// Add an event listener so that it processes an event when the user uses the History API, calling the callback.
 		window.addEventListener('popstate', () => {
@@ -28,36 +37,47 @@ export default class Router {
 	 * @param {string} key
 	 * @returns {string}
 	 */
-	getValueOf(key) {
+	getValue(key) {
 		return this._query[key];
 	}
 
 	/**
-	 * Sets the callback when the URL query params have changed.
-	 * @param {(query:Object<string, string>) => void} callback
+	 * Adds the callback for when the URL query params have changed.
+	 * @param {Callback} callback
 	 */
-	setCallback(callback) {
-		this._callback = callback;
+	addCallback(callback) {
+		this._callbacks.push(callback);
+	}
+
+	/**
+	 * Removes the callback for when the URL query params have changed.
+	 * @param {Callback} callback
+	 */
+	removeCallback(callback) {
+		for (let i = 0, l = this._callbacks.length; i < l; i++) {
+			if (this._callbacks[i] === callback) {
+				this._callbacks.splice(i, 1);
+				break;
+			}
+		}
 	}
 
 	/**
 	 * Pushes a query to the history and process it, calling the callback.
 	 * @param {Object<string, string>} query
 	 */
-	push(query) {
+	pushQuery(query) {
 		const queryString = this._createQueryString(query);
 		this._query = JSON.parse(JSON.stringify(query));
 		history.pushState(undefined, '', (query ? '?' : '') + queryString);
-		if (this._callback) {
-			this._callback(query);
-		}
+		this._callCallbacks();
 	}
 
 	/**
 	 * Replaces the query at the top of the history. Does not call the callback.
 	 * @param {Object<string, string>} query
 	 */
-	replace(query) {
+	replaceQuery(query) {
 		const queryString = this._createQueryString(query);
 		this._query = JSON.parse(JSON.stringify(query));
 		history.replaceState(undefined, '', (query ? '?' : '') + queryString);
@@ -72,20 +92,22 @@ export default class Router {
 		for (const entry of urlSearchParams.entries()) {
 			this._query[entry[0]] = entry[1];
 		}
-		if (this._callback) {
-			this._callback(JSON.parse(JSON.stringify(this._query)));
-		}
+		this._callCallbacks();
 	}
 
 	/**
 	 * Turns a query into a string suitable for a URL.
 	 * @param {Object<string, string>} query
 	 * @returns {string}
+	 * @private
 	 */
 	_createQueryString(query) {
 		let queryString = '';
 		if (query) {
 			for (const key in query) {
+				if (query[key] === undefined || query[key] === '') {
+					continue;
+				}
 				if (queryString !== '') {
 					queryString += '&';
 				}
@@ -93,5 +115,15 @@ export default class Router {
 			}
 		}
 		return queryString;
+	}
+
+	/**
+	 * Calls all of the callbacks with the current query.
+	 * @private
+	 */
+	_callCallbacks() {
+		for (let i = 0, l = this._callbacks.length; i < l; i++) {
+			this._callbacks[i](this._query);
+		}
 	}
 }

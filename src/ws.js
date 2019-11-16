@@ -56,7 +56,7 @@ class WS {
 
 		// When a message is received...
 		this._webSocket.onmessage = (message) => {
-			console.log('received ' + message.data);
+			// console.log('received ' + message.data);
 
 			// Get the json and the id.
 			/** @type {ResponseData} */
@@ -103,7 +103,7 @@ class WS {
 	 * @returns {Promise}
 	 */
 	send(data) {
-		console.log('ws.send ' + JSON.stringify(data));
+		// console.log('ws.send ' + JSON.stringify(data));
 		return new Promise((resolve, reject) => {
 			let id = this._uniqueIds.get();
 			let json = {

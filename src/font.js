@@ -31,4 +31,13 @@ export default class Font {
 			}`;
 		document.head.appendChild(fontMetricsElem);
 	}
+
+	/**
+	 * Converts an rem value to pixels.
+	 * @param {number} rem
+	 * @returns {number}
+	 */
+	static convertRemToPixels(rem) {
+		return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
+	}
 }
