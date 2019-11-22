@@ -6,9 +6,9 @@ class ShowHide {
 	 */
 	static async show(element, duration = 0.125) {
 		const fps = 30.0;
-		if (element.style.display !== 'block') {
+		if (element.style.display === 'none') {
 			element.style.opacity = '0';
-			element.style.display = 'block';
+			element.style.display = '';
 			element.setAttribute('showing', '1');
 			return new Promise((resolve, reject) => {
 				const timer = setInterval((elem) => {
@@ -79,7 +79,7 @@ class ShowHide {
 	 * @returns {boolean}
 	 */
 	static isShown(element) {
-		return getComputedStyle(element, null).display !== 'none' && !element.hasAttribute('hiding');
+		return element.style.display !== 'none';
 	}
 
 	/**
