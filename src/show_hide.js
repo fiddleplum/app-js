@@ -88,7 +88,7 @@ class ShowHide {
 	 * @returns {boolean}
 	 */
 	static isHidden(element) {
-		return !this.isShown();
+		return !this.isShown(element);
 	}
 }
 

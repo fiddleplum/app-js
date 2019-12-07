@@ -7,12 +7,20 @@ import State from './state';
  */
 export default class Component {
 	/**
+	 * Registers a component.
+	 * @param {typeof Component} componentType
+	 */
+	static register(componentType) {
+		this._registry.set(componentType.name.toLowerCase(), componentType);
+	}
+
+	/**
 	 * Constructs a component.
 	 * @param {HTMLElement} elem - The element inside which thee the component will reside.
 	 */
 	constructor(elem) {
-		if (elem === null) {
-			throw new Error('No element was specified in which to create the ' + this.constructor.name);
+		if (!(elem instanceof HTMLElement)) {
+			throw new Error('No or invalid element was specified in which to create the ' + this.constructor.name);
 		}
 
 		/**
@@ -167,8 +175,10 @@ export default class Component {
 	setHtml(idOrElem, html) {
 		const elem = typeof idOrElem === 'string' ? this._elem.querySelector('#' + idOrElem) : idOrElem;
 		this._unsetHtmlVariables(elem);
+		html = html.replace(/[\t\n]+/g, '');
 		elem.innerHTML = this._setHtmlVariables(html);
 		this._setEventHandlersFromAttributes(elem);
+		this._setComponents(elem);
 	}
 
 	/**
@@ -176,16 +186,15 @@ export default class Component {
 	 * @param {string} elemId
 	 * @returns {Component}
 	 */
-	__getComponent(elemId) {
-		const component = this._components.get(elemId);
-		return component;
+	getComponent(elemId) {
+		return this._components.get(elemId);
 	}
 
 	/**
 	 * Unsets (removes) the component at the element with the id of *elemId*. Does nothing if there is no component at that element.
 	 * @param {string} elemId
 	 */
-	__unsetComponent(elemId) {
+	unsetComponent(elemId) {
 		const component = this._components.get(elemId);
 		if (component) {
 			component.destroy();
@@ -201,7 +210,7 @@ export default class Component {
 	 * @param {...any} params
 	 * @returns {ComponentType}
 	 */
-	__setComponent(elemId, ComponentType, ...params) {
+	setComponent(elemId, ComponentType, ...params) {
 		const component = this._components.get(elemId);
 		if (component) {
 			component.destroy();
@@ -210,6 +219,30 @@ export default class Component {
 		const newComponent = new ComponentType(this.elem.querySelector('#' + elemId), ...params);
 		this._components.set(elemId, newComponent);
 		return newComponent;
+	}
+
+	/**
+	 * Goes through all of the tags, and for any that start with capital letters, sets it with the matching component.
+	 * @param {HTMLElement} elem
+	 * @private
+	 */
+	_setComponents(elem) {
+		for (let i = 0; i < elem.children.length; i++) {
+			const child = elem.children[i];
+			const ComponentType = Component._registry.get(child.tagName.toLowerCase());
+			if (ComponentType !== undefined) {
+				const newDiv = document.createElement('div');
+				for (const attribute of child.attributes) {
+					newDiv.setAttribute(attribute.name, attribute.value);
+				}
+				elem.replaceChild(newDiv, child);
+				const newComponent = new ComponentType(newDiv);
+				if (newDiv.id !== '' && newDiv.id !== undefined) {
+					this._components.set(newDiv.id, newComponent);
+				}
+			}
+			this._setComponents(child);
+		}
 	}
 
 	/**
@@ -319,10 +352,11 @@ export default class Component {
 	 */
 	_setEventHandlersFromAttributes(elem) {
 		for (const child of elem.children) {
+			const attributeNamesToRemove = [];
 			for (const attribute of child.attributes) {
 				if (attribute.name.startsWith('on')) {
 					// Get the event type.
-					const event = attribute.name.substr(2);
+					const event = attribute.name.substr(2).toLowerCase();
 					// Get the callback.
 					const handler = this[attribute.value];
 					if (!handler) {
@@ -331,12 +365,15 @@ export default class Component {
 					// Get the callback bound to this.
 					const boundHandler = handler.bind(this);
 					// Remove the attribute so there's no conflict.
-					child.removeAttribute(attribute.name);
+					attributeNamesToRemove.push(attribute.name);
 					// Add the event listener.
 					child.addEventListener(event, (event) => {
 						boundHandler(event);
 					});
 				}
+			}
+			for (const attributeName of attributeNamesToRemove) {
+				child.removeAttribute(attributeName);
 			}
 			this._setEventHandlersFromAttributes(child);
 		}
@@ -360,3 +397,10 @@ export default class Component {
 		}
 	}
 }
+
+/**
+ * The registered components, mapped from string to Component type.
+ * @type {Map<string, typeof Component>}
+ * @private
+ */
+Component._registry = new Map();
