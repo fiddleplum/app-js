@@ -241,7 +241,9 @@ export default class Component {
 					this._components.set(newDiv.id, newComponent);
 				}
 			}
-			this._setComponents(child);
+			else {
+				this._setComponents(child);
+			}
 		}
 	}
 
