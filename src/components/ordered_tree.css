@@ -1,0 +1,29 @@
+.OrderedTree .children.collapsed {
+	font-size: 0;
+}
+
+.OrderedTree .children.collapsed * {
+	margin-bottom: 0;
+}
+
+.OrderedTree .children {
+	overflow-y: hidden;
+	font-size: inherit;
+	padding-left: 1rem;
+	transition: font-size .25s;
+}
+
+.OrderedTree .children * {
+	transition: margin .25s;
+}
+
+.OrderedTree .ellipses.collapsed {
+	font-size: inherit;
+	margin: inherit;
+}
+
+.OrderedTree .ellipses {
+	transition: font-size .25s;
+	font-size: 0;
+	margin: 0;
+}

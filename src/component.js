@@ -8,17 +8,28 @@ import State from './state';
 export default class Component {
 	/**
 	 * Registers a component.
-	 * @param {typeof Component} componentType
+	 * @param {typeof Component} ComponentType
 	 */
-	static register(componentType) {
-		this._registry.set(componentType.name.toLowerCase(), componentType);
+	static register(ComponentType) {
+		this._registry.set(ComponentType.name.toLowerCase(), {
+			ComponentType,
+			styleElem: null,
+			useCount: 0
+		});
 	}
 
 	/**
 	 * Constructs a component.
-	 * @param {HTMLElement} elem - The element inside which thee the component will reside.
+	 * @param {Element} elem - The element inside which thee the component will reside.
 	 */
 	constructor(elem) {
+		// Make sure the component is registered.
+		const componentRegistryEntry = Component._registry.get(this.constructor.name.toLowerCase());
+		if (componentRegistryEntry === undefined) {
+			throw new Error('The component ' + this.constructor.name + ' has not been registered.');
+		}
+
+		// Make sure the elem is an HTMLElement.
 		if (!(elem instanceof HTMLElement)) {
 			throw new Error('No or invalid element was specified in which to create the ' + this.constructor.name);
 		}
@@ -28,7 +39,7 @@ export default class Component {
 		 * @type {HTMLElement}
 		 * @private
 		 */
-		this._elem = elem;
+		this._rootElem = elem;
 
 		/**
 		 * The state of the component.
@@ -52,10 +63,10 @@ export default class Component {
 		this._components = new Map();
 
 		// Add the CSS classes and styles.
-		this._addClassesAndStyles();
+		this._addClassesAndStyles(componentRegistryEntry);
 
 		// Set the html.
-		this.setHtml(this._elem, this.constructor.html || '');
+		this.setHtml(this._rootElem, this.constructor.html || '');
 	}
 
 	/**
@@ -67,7 +78,7 @@ export default class Component {
 		}
 
 		// Clear out any html from the parent element.
-		this._elem.innerHTML = '';
+		this._rootElem.innerHTML = '';
 
 		this._removeClassesAndStyles();
 	}
@@ -76,40 +87,40 @@ export default class Component {
 	 * Returns the HTML element that this uses.
 	 * @returns {HTMLElement}
 	 */
-	get elem() {
-		return this._elem;
+	get rootElem() {
+		return this._rootElem;
 	}
 
 	/**
 	 * Gets the element with the id. If id is undefined, it returns the root. If it is not found, it returns null.
-	 * @param {string} [id]
-	 * @returns {HTMLElement}
+	 * @param {string} id
+	 * @returns {Element}
 	 */
-	get(id) {
-		if (id !== undefined) {
-			return this._elem.querySelector('#' + id);
-		}
-		else {
-			return this._elem;
-		}
+	elem(id) {
+		return this._rootElem.querySelector('#' + id);
 	}
 
 	/**
 	 * Gets the inputs from a form along with their values. Each key/value pair is an input's name and corresponding value.
-	 * @param {string|HTMLElement} idOrElem
-	 * @returns {Object<string,string|number|boolean>}
+	 * @param {string|Element} idOrElem
+	 * @returns {Object<string,string|boolean>}
 	 */
 	getFormInputs(idOrElem) {
-		const elem = typeof idOrElem === 'string' ? this._elem.querySelector('#' + idOrElem) : idOrElem;
+		const elem = typeof idOrElem === 'string' ? this._rootElem.querySelector('#' + idOrElem) : idOrElem;
+		/** @type {Object<string,string|boolean>} */
 		const result = {};
 		for (const child of elem.children) {
-			if (['INPUT', 'SELECT', 'TEXTAREA'].includes(child.tagName) && child.hasAttribute('name')) {
-				const name = child.getAttribute('name');
-				if (child.tagName === 'input' && child.getAttribute('type') === 'checkbox') {
-					result[name] = child.checked;
-				}
-				else {
-					result[name] = child.value;
+			if (child instanceof HTMLInputElement
+				|| child instanceof HTMLSelectElement
+				|| child instanceof HTMLTextAreaElement) {
+				if (child.hasAttribute('name')) {
+					const name = child.getAttribute('name');
+					if (child instanceof HTMLInputElement && child.getAttribute('type') === 'checkbox') {
+						result[name] = child.checked;
+					}
+					else {
+						result[name] = child.value;
+					}
 				}
 			}
 			Object.assign(result, this.getFormInputs(child));
@@ -119,12 +130,12 @@ export default class Component {
 
 	/**
 	 * Sets an event listener on the element with the id.
-	 * @param {string|HTMLElement} idOrElem - The id of the element or the element itself.
+	 * @param {string|Element} idOrElem - The id of the element or the element itself.
 	 * @param {string} event
 	 * @param {(event:Event) => {}} listener
 	 */
 	on(idOrElem, event, listener) {
-		let elem = typeof idOrElem === 'string' ? this._elem.querySelector('#' + idOrElem) : idOrElem;
+		let elem = typeof idOrElem === 'string' ? this._rootElem.querySelector('#' + idOrElem) : idOrElem;
 		elem.addEventListener(event, listener.bind(this));
 	}
 
@@ -169,11 +180,11 @@ export default class Component {
 
 	/**
 	 * Sets the html for an element.
-	 * @param {string|HTMLElement} idOrElem - The id of the element or the element itself.
+	 * @param {string|Element} idOrElem - The id of the element or the element itself.
 	 * @param {string} html
 	 */
 	setHtml(idOrElem, html) {
-		const elem = typeof idOrElem === 'string' ? this._elem.querySelector('#' + idOrElem) : idOrElem;
+		const elem = typeof idOrElem === 'string' ? this._rootElem.querySelector('#' + idOrElem) : idOrElem;
 		this._unsetHtmlVariables(elem);
 		html = html.replace(/[\t\n]+/g, '');
 		elem.innerHTML = this._setHtmlVariables(html);
@@ -204,39 +215,39 @@ export default class Component {
 
 	/**
 	 * Sets a new component at the element with the id of *elemId*. If there is already a component at that element, the component is first removed.
-	 * @template ComponentType
-	 * @param {new (elem:string, ...) => ComponentType} ComponentType
-	 * @param {string} elemId
-	 * @param {...any} params
+	 * @template {Component} ComponentType
+	 * @param {string|Element} idOrElem - The id of the element or the element itself.
+	 * @param {new (elem:Element) => ComponentType} ComponentClass
 	 * @returns {ComponentType}
 	 */
-	setComponent(elemId, ComponentType, ...params) {
-		const component = this._components.get(elemId);
+	setComponent(idOrElem, ComponentClass) {
+		const elem = typeof idOrElem === 'string' ? this._rootElem.querySelector('#' + idOrElem) : idOrElem;
+		const component = this._components.get(elem.id);
 		if (component) {
 			component.destroy();
-			this._components.delete(elemId);
+			this._components.delete(elem.id);
 		}
-		const newComponent = new ComponentType(this.elem.querySelector('#' + elemId), ...params);
-		this._components.set(elemId, newComponent);
+		const newComponent = new ComponentClass(elem);
+		this._components.set(elem.id, newComponent);
 		return newComponent;
 	}
 
 	/**
-	 * Goes through all of the tags, and for any that start with capital letters, sets it with the matching component.
-	 * @param {HTMLElement} elem
+	 * Goes through all of the tags, and for any that match a component in the registry, sets it with the matching component.
+	 * @param {Element} elem
 	 * @private
 	 */
 	_setComponents(elem) {
 		for (let i = 0; i < elem.children.length; i++) {
 			const child = elem.children[i];
-			const ComponentType = Component._registry.get(child.tagName.toLowerCase());
-			if (ComponentType !== undefined) {
+			const componentRegistryEntry = Component._registry.get(child.tagName.toLowerCase());
+			if (componentRegistryEntry !== undefined) {
 				const newDiv = document.createElement('div');
 				for (const attribute of child.attributes) {
 					newDiv.setAttribute(attribute.name, attribute.value);
 				}
 				elem.replaceChild(newDiv, child);
-				const newComponent = new ComponentType(newDiv);
+				const newComponent = new componentRegistryEntry.ComponentType(newDiv);
 				if (newDiv.id !== '' && newDiv.id !== undefined) {
 					this._components.set(newDiv.id, newComponent);
 				}
@@ -250,28 +261,29 @@ export default class Component {
 	/**
 	 * Adds to the CSS class list the JavaScript class name of object and all of its ancestors (up to and excluding Component).
 	 * Adds the style of every component and all of its ancestors (up to and excluding Component), if it is not already added.
+	 * @param {ComponentRegistryEntry} componentRegistryEntry
 	 */
-	_addClassesAndStyles() {
+	_addClassesAndStyles(componentRegistryEntry) {
 		// Go through each of the component's ancestors,
+		/** @type {Component} */
 		let thisAncestor = Object.getPrototypeOf(this);
 		let lastStyleElem = null;
 		while (thisAncestor.constructor !== Component) {
 			// Add the ancestor's name to the class list.
-			this._elem.classList.add(thisAncestor.constructor.name);
+			this._rootElem.classList.add(thisAncestor.constructor.name);
 
 			// Create the ancestor's style element if it doesn't already exist, and increment the use count.
-			if (thisAncestor.constructor.hasOwnProperty('style')) {
-				let styleElem = document.querySelector('head style#' + thisAncestor.constructor.name);
-				if (styleElem === null) {
-					styleElem = document.createElement('style');
-					styleElem.id = thisAncestor.constructor.name;
-					styleElem.useCount = 0;
-					styleElem.innerHTML = thisAncestor.constructor.style;
-					document.head.insertBefore(styleElem, lastStyleElem);
+			const entry = Component._registry.get(thisAncestor.constructor.name.toLowerCase());
+			if (thisAncestor.constructor.style !== '') {
+				if (entry.useCount === 0) {
+					entry.styleElem = document.createElement('style');
+					entry.styleElem.id = thisAncestor.constructor.name;
+					entry.styleElem.innerHTML = thisAncestor.constructor.style;
+					document.head.insertBefore(entry.styleElem, lastStyleElem);
 				}
-				styleElem.useCount += 1;
-				lastStyleElem = styleElem;
+				lastStyleElem = entry.styleElem;
 			}
+			entry.useCount += 1;
 			thisAncestor = Object.getPrototypeOf(thisAncestor);
 		}
 	}
@@ -282,20 +294,20 @@ export default class Component {
 	 */
 	_removeClassesAndStyles() {
 		// Go through each of the component's ancestors,
+		/** @type {Component} */
 		let thisAncestor = Object.getPrototypeOf(this);
 		while (thisAncestor.constructor !== Component) {
 			// Remove the ancestor's name from the class list.
-			this._elem.classList.remove(thisAncestor.constructor.name);
+			this._rootElem.classList.remove(thisAncestor.constructor.name);
 
 			// Decrement the use count of the ancestor's style element and remove it if the use count is zero.
-			if (thisAncestor.constructor.style !== undefined) {
-				let styleElem = document.querySelector('head style#' + thisAncestor.constructor.name);
-				if (styleElem) {
-					styleElem.useCount -= 1;
-					if (styleElem.useCount === 0) {
-						document.head.removeChild(styleElem);
-					}
+			const entry = Component._registry.get(thisAncestor.constructor.name.toLowerCase());
+			entry.useCount -= 1;
+			if (entry.styleElem !== null) {
+				if (entry.useCount === 0) {
+					document.head.removeChild(entry.styleElem);
 				}
+				entry.styleElem = null;
 			}
 			thisAncestor = Object.getPrototypeOf(thisAncestor);
 		}
@@ -303,7 +315,7 @@ export default class Component {
 
 	/**
 	 * Unsets the text variables, removing any listeners that are no longer used.
-	 * @param {HTMLElement} elem
+	 * @param {Element} elem
 	 * @private
 	 */
 	_unsetHtmlVariables(elem) {
@@ -336,7 +348,7 @@ export default class Component {
 			}
 			else {
 				this._htmlVariables.addListener(name, (name, oldValue, newValue) => {
-					const spanElems = this._elem.querySelectorAll('span#var_' + name);
+					const spanElems = this._rootElem.querySelectorAll('span#var_' + name);
 					for (const spanElem of spanElems) {
 						spanElem.innerHTML = newValue;
 					}
@@ -349,7 +361,7 @@ export default class Component {
 
 	/**
 	 * Sets the event handlers for all children of elem. Searches for all attributes starting with 'on' and processes them.
-	 * @param {HTMLElement} elem
+	 * @param {Element} elem
 	 * @private
 	 */
 	_setEventHandlersFromAttributes(elem) {
@@ -357,11 +369,11 @@ export default class Component {
 			const attributeNamesToRemove = [];
 			for (const attribute of child.attributes) {
 				if (attribute.name.startsWith('on')) {
-					// Get the event type.
-					const event = attribute.name.substr(2).toLowerCase();
+					// Get the event type without the 'on'.
+					const event = attribute.name.substring(2).toLowerCase();
 					// Get the callback.
 					const handler = this[attribute.value];
-					if (!handler) {
+					if (handler === undefined || !(handler instanceof Function)) {
 						throw new Error('Could not find ' + event + ' handler ' + attribute.value + ' for element with id ' + elem.id);
 					}
 					// Get the callback bound to this.
@@ -369,9 +381,7 @@ export default class Component {
 					// Remove the attribute so there's no conflict.
 					attributeNamesToRemove.push(attribute.name);
 					// Add the event listener.
-					child.addEventListener(event, (event) => {
-						boundHandler(event);
-					});
+					child.addEventListener(event, boundHandler);
 				}
 			}
 			for (const attributeName of attributeNamesToRemove) {
@@ -380,29 +390,18 @@ export default class Component {
 			this._setEventHandlersFromAttributes(child);
 		}
 	}
-
-	// THINGS TO POSSIBLY REMOVE
-
-	/**
-	 * Sets the class for an element.
-	 * @param {string|HTMLElement} idOrElem - The id of the element or the element itself.
-	 * @param {string} className - The class to set.
-	 * @param {boolean} enabled - Set if true, unset if false.
-	 */
-	setClass(idOrElem, className, enabled) {
-		const elem = typeof idOrElem === 'string' ? this._elem.querySelector('#' + idOrElem) : idOrElem;
-		if (enabled) {
-			elem.classList.add(className);
-		}
-		else {
-			elem.classList.remove(className);
-		}
-	}
 }
 
 /**
+ * @typedef ComponentRegistryEntry
+ * @property {typeof Component} ComponentType
+ * @property {HTMLStyleElement} styleElem
+ * @property {number} useCount
+ */
+
+/**
  * The registered components, mapped from string to Component type.
- * @type {Map<string, typeof Component>}
+ * @type {Map<string, ComponentRegistryEntry>}
  * @private
  */
 Component._registry = new Map();

@@ -1,8 +1,7 @@
 {
 	"compilerOptions": {
-	  "module": "es2015",
-	  "target": "es2017",
-	  "checkJs": true
+		"module": "es2015",
+		"target": "es2017"
 	},
 	"include": ["src/**/*"]
   }
