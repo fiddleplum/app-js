@@ -8,7 +8,7 @@ export default class SimpleApp extends App {
 
 		/**
 		 * A mapping from page names to page components.
-		 * @type {Map<string, (elem:HTMLElement, app:SimpleApp) => Component>}
+		 * @type {Map<string, new (app:SimpleApp) => Component>}
 		 * @private
 		 */
 		this._pages = new Map();
@@ -29,7 +29,7 @@ export default class SimpleApp extends App {
 	 * @param {string} title
 	 */
 	set title(title) {
-		this.elem.querySelector('#title a').innerHTML = title;
+		this.__getElement('title').innerHTML = title;
 	}
 
 	/**
@@ -38,13 +38,13 @@ export default class SimpleApp extends App {
 	 */
 	set message(message) {
 		console.log(message);
-		this.elem.querySelector('#message').innerHTML = message;
+		this.__getElement('message').innerHTML = message;
 	}
 
 	/**
 	 * Registers a component as a page.
 	 * @param {string} pageName
-	 * @param {(elem:HTMLElement, app:SimpleApp) => Component} PageClass
+	 * @param {new (app:SimpleApp) => Component} PageClass
 	 */
 	registerPage(pageName, PageClass) {
 		this._pages.set(pageName, PageClass);
@@ -56,45 +56,39 @@ export default class SimpleApp extends App {
 	 * @private
 	 */
 	async _processQuery(query) {
-		try {
-			const pageName = query.page || '';
-			const Page = this._pages.get(pageName);
-			if (Page === undefined) {
-				this.message = 'Page not found. Return to <a href=".">home</a>.';
-				return;
-			}
-			// If it's the same page, do nothing.
-			if (this._page instanceof Page) {
-				return;
-			}
-			if (this._page !== null) {
-				await ShowHide.hide(this._page.elem);
-				this._page.destroy();
-			}
-			this._page = new Page(document.querySelector('#page'), this);
-			await ShowHide.show(this._page.elem);
+		const pageName = query.page || '';
+		const Page = this._pages.get(pageName);
+		if (Page === undefined) {
+			this.message = 'Page "' + pageName + '" not found. Return to <a href=".">home</a>.';
+			return;
 		}
-		catch (e) {
-			console.log(e);
+		// If it's the same page, do nothing.
+		if (this._page instanceof Page) {
+			return;
+		}
+		const pageElement = this.__getElement('page');
+		if (pageElement instanceof HTMLElement) {
+			await ShowHide.hide(pageElement);
+			this.__unsetComponent('page');
+		}
+		this._page = this.__setComponent(Page.bind(undefined, this), { ref: 'page', parentElement: pageElement });
+		if (pageElement instanceof HTMLElement) {
+			await ShowHide.show(pageElement);
 		}
 	}
 }
 
 SimpleApp.html = `
-	<div id="title"><a href="."></a></div>
-	<div id="message"></div>
-	<div id="page"></div>
+	<div class="title"><a ref="title" href="."></a></div>
+	<div ref="message" class="message"></div>
+	<div ref="page" class="page"></div>
 	`;
 
 SimpleApp.style = `
 	body {
 		margin: 0;
-		min-height: 100vh;
-	}
-	.SimpleApp {
-		margin: 0;
 		width: 100%;
-		height: 100%;
+		min-height: 100vh;
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		grid-template-rows: 2rem 1fr;
@@ -102,47 +96,49 @@ SimpleApp.style = `
 			"title message"
 			"page page";
 	}
-	.SimpleApp > #title {
+	.SimpleApp.title {
 		grid-area: title;
 		padding: 0.25rem;
 		font-size: 1.5rem;
 		line-height: 1.5rem;
 	}
-	.SimpleApp > #title a {
+	.SimpleApp.title a {
 		color: inherit;
 		text-decoration: none;
 	}
-	.SimpleApp > #title a:hover {
+	.SimpleApp#title a:hover {
 		text-decoration: underline;
 	}
-	.SimpleApp > #message {
+	.SimpleApp.message {
 		grid-area: message;
 		text-align: right;
 		line-height: 1rem;
 		padding: .5rem;
 	}
-	.SimpleApp > #message a {
+	.SimpleApp.message a {
 		color: inherit;
 		text-decoration: none;
 	}
-	.SimpleApp > #message a:hover {
+	.SimpleApp.message a:hover {
 		text-decoration: underline;
 	}
-	.SimpleApp > #page {
+	.SimpleApp.page {
 		position: relative;
 		grid-area: page;
 		width: calc(100% - 2rem);
 		max-width: 50rem;
 		margin: 1rem auto 0 auto;
 	}
-	.SimpleApp > #page.fadeOut {
+	.SimpleApp.page.fadeOut {
 		opacity: 0;
 		transition: opacity .125s;
 	}
-	.SimpleApp > #page.fadeIn {
+	.SimpleApp.page.fadeIn {
 		opacity: 1;
 		transition: opacity .125s;
 	}
 	`;
+
+SimpleApp.register(SimpleApp);
 
 App.setAppClass(SimpleApp);

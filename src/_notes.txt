@@ -1,0 +1,55 @@
+Decisions:
+	- Each component will have a single root.
+	- All attributes in <Component/> are passed into the constructor, except id, which is used to reference the component when doing getComponent(id).
+	- There is a rootNode get function.
+	- There is a query() function.
+
+OR
+
+	- Each component can have multiple roots.
+	- All attributes in <Component/> are passed into the constructor, except ref.
+	- Any element, including components, can have a ref attribute, which is how the component accesses individual elements.
+	- If a component tag has a ref, the getComponent(ref) function can be used to get the component.
+	- There is no rootNode get function or query function, just a get(ref) and getComponent(ref).
+	- Each root element has the component's name in its class list.
+
+Things I'm not yet satisfied with:
+	- Every root node has the class name of its component.
+	- The component constructor has a lot of parameters.
+
+When creating via <Component...,
+	The component itself should have in the .html root,
+		No id, as it is 
+		Classes should be treated differently, since they can be added, rather than overridden.
+		It can have on handlers though, like a <button component.
+	The attributes and children of the <Component tag are passed into the constructor.
+		The id is not passed in, but added after the constructor.
+
+Each component creates its own root elements.
+A component can have multiple root tags.
+  If it has more than one tag, it can't have any attributes in its constructor.
+The html and style are set on the class as static members.
+I've completely removed html variables, since they add complexity, and the same thing can be done with .setHtml(id, 'text');
+The component should not be able to change the root to another node after construction.
+
+Refs:
+Since a component may have more than one root, there's no way to use selectors to get any of the roots.
+Every component can have a ref. A ref lets its parent know how to refer to it in its getComponent function.
+Refs make more sense than ids because if a panel has a <div id="title"> and it contains another panel with a similar id, there will be a conflict with names.
+
+Attributes
+	When doing <Component, the attributes should not be applied to any root nodes, but they should just be passed in to the constructor.
+	The reason is that the user of the component shouldn't know what's inside the component and shouldn't be able to reference it directly.
+	This includes class id and onclick attributes.
+	This means that the onclick processing should only happen if the element isn't a component.
+	Users should only be able to access the components via the getComponent() function.
+	The id attribute applied to the <Component id=''/> will be used in the component map and not applied to the root node(s).
+
+Single vs multiple root nodes
+I'm considering requiring one root for components. Reasons:
+	- There's no way to use selectors to get any of the multiple roots. If I have one root, I can have a get root() function and a query function.
+		- Refs would solve that problem, since they allow acess to any roots.
+	- When the app is running, it is very easy to see where components are, since they all have one root with the class names.
+	- It makes the other functions simpler.
+
+

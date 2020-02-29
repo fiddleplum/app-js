@@ -4,7 +4,7 @@ import Router from './router';
 export default class App extends Component {
 	/**
 	 * Sets the subclass of App to be instantiated. It should be called in the main script outside of any function.
-	 * @param {App} appClass
+	 * @param {typeof App} appClass
 	 */
 	static setAppClass(appClass) {
 		App._appClass = appClass;
@@ -14,7 +14,7 @@ export default class App extends Component {
 	 * Constructs a component inside the body.
 	 */
 	constructor() {
-		super(document.body);
+		super();
 
 		/**
 		 * The router system.
@@ -24,6 +24,7 @@ export default class App extends Component {
 		this._router = new Router();
 
 		// Make this global.
+		// @ts-ignore
 		window.app = this;
 	}
 
@@ -56,9 +57,11 @@ App.style = `
 	}
 	`;
 
+App.register(App);
+
 /**
  * The subclass of App to be instantiated.
- * @type {App}
+ * @type {typeof App}
  * @private
  */
 App._appClass = App;
@@ -66,7 +69,8 @@ App._appClass = App;
 window.addEventListener('load', () => {
 	try {
 		// eslint-disable-next-line no-new
-		new App._appClass();
+		const app = new App._appClass();
+		document.body.append(...app._rootNodes);
 	}
 	catch (error) {
 		console.error(error);

@@ -8,7 +8,7 @@ class UniqueIds {
 	constructor() {
 		/**
 		 * The free ids. If there are no free ids, the next free id is the number used.
-		 * @type {number}
+		 * @type {number[]}
 		 * @private
 		 */
 		this._freeIds = [];
