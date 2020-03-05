@@ -214,15 +214,14 @@ export default class Component {
 
 	/**
 	 * Registers a component.
-	 * @param {typeof Component} ComponentType
 	 */
-	static register(ComponentType) {
+	static register() {
 		/** @type {RegistryEntry} */
 		const entry = {
-			constructor: ComponentType,
+			constructor: this,
 			ancestors: [],
-			html: ComponentType.html.trim().replace(/\n/g, '').replace(/\t/g, ''),
-			style: ComponentType.style.trim(),
+			html: this.html.trim().replace(/\n/g, '').replace(/\t/g, ''),
+			style: this.style.trim(),
 			styleElem: null,
 			styleCount: 0
 		};
@@ -230,7 +229,7 @@ export default class Component {
 		entry.ancestors.push(entry);
 
 		// Populate the ancestors.
-		let ancestor = ComponentType;
+		let ancestor = this;
 		while (true) {
 			if (ancestor === Component) {
 				break;
@@ -241,7 +240,7 @@ export default class Component {
 		}
 
 		// Set the registry entry.
-		this._registry.set(ComponentType.name.toLowerCase(), entry);
+		this._registry.set(this.name.toLowerCase(), entry);
 	}
 
 	/**
@@ -451,4 +450,4 @@ Component.style = '';
  */
 Component._registry = new Map();
 
-Component.register(Component);
+Component.register();
