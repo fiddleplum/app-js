@@ -220,7 +220,7 @@ export default class Component {
 		const entry = {
 			constructor: this,
 			ancestors: [],
-			html: this.html.trim().replace(/\n/g, '').replace(/\t/g, ''),
+			html: this.html.replace(/[\t\n]+/g, '').trim(),
 			style: this.style.trim(),
 			styleElem: null,
 			styleCount: 0
