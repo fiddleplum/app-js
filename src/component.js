@@ -390,10 +390,8 @@ export default class Component {
 	static _addStyles(registryEntry) {
 		let lastStyleElem = null;
 		for (let i = 0; i < registryEntry.ancestors.length; i++) {
-			const ancestor = registryEntry.ancestors[i];
+			const ancestorEntry = registryEntry.ancestors[i];
 
-			// Decrement the use count of the ancestor's style element and remove it if the use count is zero.
-			const ancestorEntry = this._registry.get(ancestor.constructor.name.toLowerCase());
 			// Create the ancestor's style element if it doesn't already exist, and increment the use count.
 			if (ancestorEntry.style !== '') {
 				if (ancestorEntry.styleCount === 0) {
@@ -415,10 +413,9 @@ export default class Component {
 	 */
 	static _removeStyles(registryEntry) {
 		for (let i = 0; i < registryEntry.ancestors.length; i++) {
-			const ancestor = registryEntry.ancestors[i];
+			const ancestorEntry = registryEntry.ancestors[i];
 
 			// Decrement the use count of the ancestor's style element and remove it if the use count is zero.
-			const ancestorEntry = this._registry.get(ancestor.constructor.name.toLowerCase());
 			if (ancestorEntry.styleElem !== null) {
 				ancestorEntry.styleCount -= 1;
 				if (ancestorEntry.styleCount === 0) {
