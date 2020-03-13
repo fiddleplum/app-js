@@ -15,7 +15,6 @@ OR
 
 Things I'm not yet satisfied with:
 	- Every root node has the class name of its component.
-	- The component constructor has a lot of parameters.
 
 When creating via <Component...,
 	The component itself should have in the .html root,

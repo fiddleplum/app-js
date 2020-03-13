@@ -1,8 +1,6 @@
-import Bimap from './bimap';
-
 /**
  * @template {Component} T
- * @typedef {new (attributes:Object<string, string>, children:Node[]) => T} ComponentType
+ * @typedef {new (ref:string, attributes:Object<string, any>, children:Node[]) => T} ComponentType
  */
 
 /**
@@ -13,15 +11,23 @@ import Bimap from './bimap';
 export default class Component {
 	/**
 	 * Constructs a component.
-	 * @param {Object<string, string>} [attributes] - The attributes passed as if it were <Component attrib=''...>
-	 * @param {Node[]} [children] - The children of the node as if it were <Component><child1/>...</Component>
+	 * @param {string} ref - The reference of the component, if it has one.
+	 * @param {Object<string, any>} attributes - The attributes passed as if it were <Component attrib=''...>
+	 * @param {Node[]} children - The children of the node as if it were <Component><child1/>...</Component>
 	 */
-	constructor(attributes, children) {
+	constructor(ref, attributes, children) {
 		// Make sure the component is registered.
 		let registryEntry = Component._registry.get(this.constructor.name.toLowerCase());
 		if (registryEntry === undefined) {
 			throw new Error('The component "' + this.constructor.name + '" has not been registered.');
 		}
+
+		/**
+		 * The reference of the component.
+		 * @type {string}
+		 * @private
+		 */
+		this._ref = ref;
 
 		/**
 		 * The root elements.
@@ -39,20 +45,20 @@ export default class Component {
 
 		/**
 		 * The mapping of references to elements.
-		 * @type {Bimap<string, Element>}
+		 * @type {Map<string, Element>}
 		 * @private
 		 */
-		this._elementRefs = new Bimap();
+		this._elementRefs = new Map();
 
 		/**
 		 * The mapping of references to child components.
-		 * @type {Bimap<string, Component>}
+		 * @type {Map<string, Component>}
 		 * @private
 		 */
-		this._componentRefs = new Bimap();
+		this._componentRefs = new Map();
 
 		// Set the HTML of the root element.
-		if (registryEntry && registryEntry.html !== '') {
+		if (registryEntry.html !== '') {
 			// Create the template and add the html content as the root node.
 			const templateElem = document.createElement('template');
 			templateElem.innerHTML = registryEntry.html;
@@ -61,38 +67,64 @@ export default class Component {
 			// Set the event handlers and child components.
 			for (const node of this._rootNodes) {
 				if (node instanceof Element) {
+					// Set the child components.
+					this._setComponents(node);
+
+					// Set the references.
+					this._setRefs(node);
+
+					// Set the event handlers.
+					this._setEventHandlersFromElemAttributes(node);
+
 					// Add the classes to the root element.
 					for (const ancestor of registryEntry.ancestors) {
 						node.classList.add(ancestor.constructor.name);
 					}
-					this._setComponents(node);
-					this._setRefs(node);
-					this._setEventHandlersFromElemAttributes(node);
 				}
 			}
 		}
 
-		Component._addStyles(registryEntry);
+		// Set the style element.
+		let lastStyleElem = null;
+		for (let i = 0; i < registryEntry.ancestors.length; i++) {
+			const ancestorEntry = registryEntry.ancestors[i];
+
+			// Create the ancestor's style element if it doesn't already exist, and increment the use count.
+			if (ancestorEntry.css !== '') {
+				if (ancestorEntry.styleCount === 0) {
+					ancestorEntry.styleElem = document.createElement('style');
+					ancestorEntry.styleElem.id = ancestorEntry.constructor.name;
+					ancestorEntry.styleElem.innerHTML = ancestorEntry.css;
+					document.head.insertBefore(ancestorEntry.styleElem, lastStyleElem);
+				}
+				ancestorEntry.styleCount += 1;
+				lastStyleElem = ancestorEntry.styleElem;
+			}
+		}
 	}
 
 	/**
 	 * Destroys this when it is no longer needed. Call to clean up the object.
 	 */
-	destroy() {
+	__destroy() {
 		// Destroy all child components.
 		for (const component of this._components) {
-			component.destroy();
-		}
-
-		// Remove this from its parent component.
-		for (const node of this._rootNodes) {
-			if (node.parentNode !== null) {
-				node.parentNode.removeChild(node);
-			}
+			component.__destroy();
 		}
 
 		// Remove the style elements of the component and its ancestors.
-		Component._removeStyles(Component._registry.get(this.constructor.name.toLowerCase()));
+		const registryEntry = Component._registry.get(this.constructor.name.toLowerCase());
+		for (let i = 0; i < registryEntry.ancestors.length; i++) {
+			// Decrement the use count of the ancestor's style element and remove it if the use count is zero.
+			const ancestorEntry = registryEntry.ancestors[i];
+			if (ancestorEntry.styleElem !== null) {
+				ancestorEntry.styleCount -= 1;
+				if (ancestorEntry.styleCount === 0) {
+					document.head.removeChild(ancestorEntry.styleElem);
+					ancestorEntry.styleElem = null;
+				}
+			}
+		}
 	}
 
 	/**
@@ -100,8 +132,8 @@ export default class Component {
 	 * @param {string} ref - The reference.
 	 * @returns {Element}
 	 */
-	__getElement(ref) {
-		return this._elementRefs.getValue(ref) || null;
+	__element(ref) {
+		return this._elementRefs.get(ref) || null;
 	}
 
 	/**
@@ -109,21 +141,17 @@ export default class Component {
 	 * @param {string} ref - The reference.
 	 * @returns {Component}
 	 */
-	__getComponent(ref) {
-		return this._componentRefs.getValue(ref) || null;
+	__component(ref) {
+		return this._componentRefs.get(ref) || null;
 	}
 
 	/**
 	 * Sets the inner html for an referenced element. Cleans up tabs and newlines.
 	 * Cleans up old handlers and components and adds new handlers and components.
-	 * @param {string} ref - The reference to the element whose innerHTML is set.
+	 * @param {HTMLElement} element - The element.
 	 * @param {string} html - The HTMl.
 	 */
-	__setHtml(ref, html) {
-		const element = this._elementRefs.getValue(ref);
-		if (!element) {
-			throw new Error('Element with reference "' + ref + '" not found.');
-		}
+	__setHtml(element, html) {
 		html = html.replace(/[\t\n]+/g, '');
 		for (const child of element.children) {
 			this._unsetRefs(child);
@@ -138,110 +166,82 @@ export default class Component {
 	}
 
 	/**
-	 * Unsets (removes) the referenced component. Does nothing if it isn't found.
-	 * @param {string} ref - The reference to the component.
-	 */
-	__unsetComponent(ref) {
-		const component = this._componentRefs.getValue(ref);
-		if (component === undefined) {
-			return;
-		}
-		this._componentRefs.delete(ref);
-		this._components.delete(component);
-		component.destroy();
-	}
-
-	/**
 	 * Sets a new component as a child of *parent* right before the child *beforeChild*.
 	 * @template {Component} T
 	 * @param {ComponentType<T>} ComponentType
-	 * @param {object} options
-	 * @param {Element} options.parentElement
-	 * @param {Node} [options.beforeChild]
-	 * @param {string} [options.ref]
-	 * @param {Object<string, string>} [options.attributes]
-	 * @param {Node[]} [options.children]
+	 * @param {Element} parentElement
+	 * @param {Node} beforeChild
+	 * @param {string} ref
+	 * @param {Map<string, any>} attributes
+	 * @param {Node[]} children
 	 * @returns {T}
 	 */
-	__setComponent(ComponentType, options) {
+	__insertComponent(ComponentType, parentElement, beforeChild, ref, attributes, children) {
 		// Create the component.
-		const newComponent = new ComponentType(options.attributes, options.children);
+		const newComponent = new ComponentType(ref, attributes, children);
+
+		// Add it to the list of components.
 		this._components.add(newComponent);
 
 		// Connect the component to its parent.
 		for (const rootNode of newComponent._rootNodes) {
-			if (options.beforeChild !== undefined) {
-				options.parentElement.insertBefore(rootNode, options.beforeChild);
+			if (beforeChild !== null) {
+				parentElement.insertBefore(rootNode, beforeChild);
 			}
 			else {
-				options.parentElement.appendChild(rootNode);
+				parentElement.appendChild(rootNode);
 			}
 		}
 
 		// Set the reference, if there is one.
-		if (options.ref) {
-			this._componentRefs.set(options.ref, newComponent);
+		if (ref !== '') {
+			this._componentRefs.set(ref, newComponent);
 		}
 		return newComponent;
 	}
 
 	/**
-	 * Gets the inputs from a form along with their values. Each key/value pair is an input's name and corresponding value.
-	 * @param {Element} elem
-	 * @returns {Object<string,string|boolean>}
+	 * Deletes the referenced component. Does nothing if it isn't found.
+	 * @param {Component} component
 	 */
-	static getFormInputs(elem) {
-		/** @type {Object<string,string|boolean>} */
-		const result = {};
-		for (const child of elem.children) {
-			if (child instanceof HTMLInputElement
-				|| child instanceof HTMLSelectElement
-				|| child instanceof HTMLTextAreaElement) {
-				if (child.hasAttribute('name')) {
-					const name = child.getAttribute('name');
-					if (child instanceof HTMLInputElement && child.getAttribute('type') === 'checkbox') {
-						result[name] = child.checked;
-					}
-					else {
-						result[name] = child.value;
-					}
-				}
-			}
-			Object.assign(result, this.getFormInputs(child));
+	__deleteComponent(component) {
+		if (!this._components.has(component)) {
+			return;
 		}
-		return result;
+		// Delete the component from the lists.
+		if (component._ref !== '') {
+			this._componentRefs.delete(component._ref);
+		}
+		this._components.delete(component);
+
+		// Remove the component's root nodes.
+		for (const node of component._rootNodes) {
+			node.parentNode.removeChild(node);
+		}
+
+		// Call its destroy function.
+		component.__destroy();
 	}
 
 	/**
-	 * Registers a component.
-	 * @param {typeof Component} ComponentType
+	 * Goes through all of the tags, and for any that match a component in the registry, sets it with the matching component.
+	 * Goes through all of the children also.
+	 * @param {Element} element
+	 * @private
 	 */
-	static register(ComponentType) {
-		/** @type {RegistryEntry} */
-		const entry = {
-			constructor: ComponentType,
-			ancestors: [],
-			html: ComponentType.html.trim().replace(/\n/g, '').replace(/\t/g, ''),
-			style: ComponentType.style.trim(),
-			styleElem: null,
-			styleCount: 0
-		};
-
-		entry.ancestors.push(entry);
-
-		// Populate the ancestors.
-		let ancestor = ComponentType;
-		while (true) {
-			if (ancestor === Component) {
-				break;
-			}
-			ancestor = Object.getPrototypeOf(ancestor);
-			const ancestorEntry = Component._registry.get(ancestor.name.toLowerCase());
-			entry.ancestors.push(ancestorEntry);
+	_setComponents(element) {
+		const registryEntry = Component._registry.get(element.tagName.toLowerCase());
+		if (registryEntry !== undefined) {
+			const child = element.children[i];
+			const component = this._checkAndSetComponentFromElement(child);
 		}
-
-		// Set the registry entry.
-		this._registry.set(ComponentType.name.toLowerCase(), entry);
+		else {
+			for (let i = 0; i < element.children.length; i++) {
+				if (component === null) {
+					this._setComponents(child);
+				}
+			}
+		}
 	}
 
 	/**
@@ -259,21 +259,6 @@ export default class Component {
 					component.destroy();
 					break;
 				}
-			}
-		}
-	}
-
-	/**
-	 * Goes through all of the tags, and for any that match a component in the registry, sets it with the matching component.
-	 * @param {Element} element
-	 * @private
-	 */
-	_setComponents(element) {
-		for (let i = 0; i < element.children.length; i++) {
-			const child = element.children[i];
-			const component = this._checkAndSetComponentFromElement(child);
-			if (component === null) {
-				this._setComponents(child);
 			}
 		}
 	}
@@ -318,12 +303,12 @@ export default class Component {
 	 * @private
 	 */
 	_setRefs(element) {
-		if (element.classList.contains('Component') && !this._rootNodes.includes(element)) {
+		if (element.classList.contains('Component')) {
 			return; // Don't process child components.
 		}
 		const attribute = element.attributes.getNamedItem('ref');
 		if (attribute !== null) {
-			if (this._elementRefs.hasKey(attribute.value)) {
+			if (this._elementRefs.has(attribute.value)) {
 				throw new Error('The element ref "' + attribute.value + '" has already been used.');
 			}
 			this._elementRefs.set(attribute.value, element);
@@ -339,7 +324,7 @@ export default class Component {
 	 * @private
 	 */
 	_unsetRefs(element) {
-		if (element.classList.contains('Component') && !this._rootNodes.includes(element)) {
+		if (element.classList.contains('Component')) {
 			return; // Don't process child components.
 		}
 		const attribute = element.attributes.getNamedItem('ref');
@@ -384,62 +369,77 @@ export default class Component {
 	}
 
 	/**
-	 * Adds the style of every component and all of its ancestors (up to and including Component), if it is not already added.
-	 * @param {RegistryEntry} registryEntry
-	 * @private
+	 * Gets the inputs from a form along with their values. Each key/value pair is an input's name and corresponding value.
+	 * @param {Element} elem
+	 * @returns {Object<string,string|boolean>}
 	 */
-	static _addStyles(registryEntry) {
-		let lastStyleElem = null;
-		for (let i = 0; i < registryEntry.ancestors.length; i++) {
-			const ancestor = registryEntry.ancestors[i];
-
-			// Decrement the use count of the ancestor's style element and remove it if the use count is zero.
-			const ancestorEntry = this._registry.get(ancestor.constructor.name.toLowerCase());
-			// Create the ancestor's style element if it doesn't already exist, and increment the use count.
-			if (ancestorEntry.style !== '') {
-				if (ancestorEntry.styleCount === 0) {
-					ancestorEntry.styleElem = document.createElement('style');
-					ancestorEntry.styleElem.id = ancestorEntry.constructor.name;
-					ancestorEntry.styleElem.innerHTML = ancestorEntry.style;
-					document.head.insertBefore(ancestorEntry.styleElem, lastStyleElem);
+	static getFormInputs(elem) {
+		/** @type {Object<string,string|boolean>} */
+		const result = {};
+		for (const child of elem.children) {
+			if (child instanceof HTMLInputElement
+				|| child instanceof HTMLSelectElement
+				|| child instanceof HTMLTextAreaElement) {
+				if (child.hasAttribute('name')) {
+					const name = child.getAttribute('name');
+					if (child instanceof HTMLInputElement && child.getAttribute('type') === 'checkbox') {
+						result[name] = child.checked;
+					}
+					else {
+						result[name] = child.value;
+					}
 				}
-				ancestorEntry.styleCount += 1;
-				lastStyleElem = ancestorEntry.styleElem;
 			}
+			Object.assign(result, this.getFormInputs(child));
 		}
+		return result;
 	}
 
 	/**
-	 * Removes the style element of the component and all of its ancestors (up to and including Component), if it is the only one left.
-	 * @param {RegistryEntry} registryEntry
-	 * @private
+	 * Registers a component.
 	 */
-	static _removeStyles(registryEntry) {
-		for (let i = 0; i < registryEntry.ancestors.length; i++) {
-			const ancestor = registryEntry.ancestors[i];
-
-			// Decrement the use count of the ancestor's style element and remove it if the use count is zero.
-			const ancestorEntry = this._registry.get(ancestor.constructor.name.toLowerCase());
-			if (ancestorEntry.styleElem !== null) {
-				ancestorEntry.styleCount -= 1;
-				if (ancestorEntry.styleCount === 0) {
-					document.head.removeChild(ancestorEntry.styleElem);
-					ancestorEntry.styleElem = null;
-				}
-			}
+	static register() {
+		if (this._registry.has(this.name.toLowerCase())) {
+			throw new Error('A component named "' + this.name + '" is already registered.');
 		}
+
+		/** @type {RegistryEntry} */
+		const entry = {
+			constructor: this,
+			ancestors: [],
+			html: this.html ? this.html.trim().replace(/\n/g, '').replace(/\t/g, '') : '',
+			css: this.css ? this.css.trim() : '',
+			styleElem: null,
+			styleCount: 0
+		};
+
+		entry.ancestors.push(entry);
+
+		// Populate the ancestors.
+		let ancestor = this;
+		while (true) {
+			if (ancestor === Component) {
+				break;
+			}
+			ancestor = Object.getPrototypeOf(ancestor);
+			const ancestorEntry = Component._registry.get(ancestor.name.toLowerCase());
+			entry.ancestors.push(ancestorEntry);
+		}
+
+		// Set the registry entry.
+		this._registry.set(this.name.toLowerCase(), entry);
 	}
 }
 
 Component.html = '';
-Component.style = '';
+Component.css = '';
 
 /**
  * @typedef RegistryEntry
- * @property {ComponentType<Component>} constructor
+ * @property {typeof Component} constructor
  * @property {RegistryEntry[]} ancestors
  * @property {string} html
- * @property {string} style
+ * @property {string} css
  * @property {HTMLStyleElement} styleElem
  * @property {number} styleCount
  */
@@ -451,4 +451,4 @@ Component.style = '';
  */
 Component._registry = new Map();
 
-Component.register(Component);
+Component.register();
