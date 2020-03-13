@@ -237,9 +237,7 @@ export default class Component {
 		}
 		else {
 			for (let i = 0; i < element.children.length; i++) {
-				if (component === null) {
-					this._setComponents(child);
-				}
+				this._setComponents(element.children[i]);
 			}
 		}
 	}
@@ -407,7 +405,7 @@ export default class Component {
 		const entry = {
 			constructor: this,
 			ancestors: [],
-			html: this.html ? this.html.trim().replace(/\n/g, '').replace(/\t/g, '') : '',
+			html: this.html ? this.html.replace(/[\t\n]+/g, '').trim() : '',
 			css: this.css ? this.css.trim() : '',
 			styleElem: null,
 			styleCount: 0
