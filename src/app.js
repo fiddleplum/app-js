@@ -19,7 +19,6 @@ export default class App extends Component {
 		/**
 		 * The router system.
 		 * @type {Router}
-		 * @private
 		 */
 		this._router = new Router();
 
@@ -37,7 +36,7 @@ export default class App extends Component {
 	}
 }
 
-App.style = `
+App.css = `
 	* {
 		box-sizing: border-box;
 	}
@@ -57,12 +56,11 @@ App.style = `
 	}
 	`;
 
-App.register(App);
+App.register();
 
 /**
  * The subclass of App to be instantiated.
  * @type {typeof App}
- * @private
  */
 App._appClass = App;
 
