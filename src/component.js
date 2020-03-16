@@ -1,7 +1,7 @@
-// /**
-//  * @template {Component} T
-//  * @typedef {new (...any) => T} ComponentType
-//  */
+/**
+ * @template {Component} T
+ * @typedef {new (ref:string, attributes:Map<string, any>, children:Node[]) => T} ComponentType
+ */
 
 /**
  * A base component from which other components can extend.
@@ -11,13 +11,22 @@
 export default class Component {
 	/**
 	 * Constructs a component.
+	 * @param {string} [ref = ''] - The reference of the component, if it has one.
+	 * @param {Map<string, any>} [attributes = new Map()] - The attributes passed as if it were <Component attrib=''...>
+	 * @param {Node[]} [children = []] - The children of the node as if it were <Component><child1/>...</Component>
 	 */
-	constructor() {
+	constructor(ref = '', attributes = new Map(), children = []) {
 		// Make sure the component is registered.
 		let registryEntry = Component._registry.get(this.constructor.name.toLowerCase());
 		if (registryEntry === undefined) {
 			throw new Error('The component "' + this.constructor.name + '" has not been registered.');
 		}
+
+		/**
+		 * The reference of the component.
+		 * @type {string}
+		 */
+		this._ref = ref;
 
 		/**
 		 * The root elements.
@@ -37,6 +46,12 @@ export default class Component {
 		 */
 		this._elementRefs = new Map();
 
+		/**
+		 * The mapping of references to child components.
+		 * @type {Map<string, Component>}
+		 */
+		this._componentRefs = new Map();
+
 		// Set the HTML of the root element.
 		if (registryEntry.html !== '') {
 			// Create the template and add the html content as the root node.
@@ -47,6 +62,9 @@ export default class Component {
 			// Set the event handlers and child components.
 			for (const node of this._rootNodes) {
 				if (node instanceof HTMLElement) {
+					// Set the child components.
+					this._setComponents(node);
+
 					// Set the references.
 					this._setRefs(node);
 
@@ -77,6 +95,17 @@ export default class Component {
 				ancestorEntry.styleCount += 1;
 				lastStyleElem = ancestorEntry.styleElem;
 			}
+		}
+
+		// If there is a ref element called content, this is where the content goes.
+		if (this._elementRefs.has('content')) {
+			const contentElement = this._elementRefs.get('content');
+			this.__setHtml(contentElement, '');
+			for (const child of children) {
+				contentElement.appendChild(child);
+			}
+			this._setRefs(contentElement);
+			this._setComponents(contentElement);
 		}
 	}
 
@@ -114,6 +143,15 @@ export default class Component {
 	}
 
 	/**
+	 * Gets the component with the reference. Returns null if not found.
+	 * @param {string} ref - The reference.
+	 * @returns {Component}
+	 */
+	__component(ref) {
+		return this._componentRefs.get(ref) || null;
+	}
+
+	/**
 	 * Sets the inner html for an referenced element. Cleans up tabs and newlines.
 	 * Cleans up old handlers and components and adds new handlers and components.
 	 * @param {HTMLElement} element - The element.
@@ -128,6 +166,7 @@ export default class Component {
 		element.innerHTML = html;
 		for (const child of element.children) {
 			if (child instanceof HTMLElement) {
+				this._setComponents(child);
 				this._setRefs(child);
 				this._setEventHandlersFromElemAttributes(child);
 			}
@@ -137,15 +176,17 @@ export default class Component {
 	/**
 	 * Sets a new component as a child of *parent* right before the child *beforeChild*.
 	 * @template {Component} T
-	 * @param {new (...params:any) => T} ComponentType
+	 * @param {ComponentType<T>} ComponentType
 	 * @param {Element} parentElement
 	 * @param {Node} beforeChild
-	 * @param {any[]} params
+	 * @param {string} ref
+	 * @param {Map<string, any>} attributes
+	 * @param {Node[]} children
 	 * @returns {T}
 	 */
-	__insertComponent(ComponentType, parentElement, beforeChild, ...params) {
+	__insertComponent(ComponentType, parentElement, beforeChild, ref, attributes, children) {
 		// Create the component.
-		const newComponent = new ComponentType(...params);
+		const newComponent = new ComponentType(ref, attributes, children);
 
 		// Add it to the list of components.
 		this._components.add(newComponent);
@@ -160,7 +201,10 @@ export default class Component {
 			}
 		}
 
-		// Return the component.
+		// Set the reference, if there is one.
+		if (ref !== '') {
+			this._componentRefs.set(ref, newComponent);
+		}
 		return newComponent;
 	}
 
@@ -171,6 +215,10 @@ export default class Component {
 	__deleteComponent(component) {
 		if (!this._components.has(component)) {
 			return;
+		}
+		// Delete the component from the lists.
+		if (component._ref !== '') {
+			this._componentRefs.delete(component._ref);
 		}
 		this._components.delete(component);
 
@@ -219,6 +267,49 @@ export default class Component {
 		}
 		for (const child of element.children) {
 			this._unsetRefs(child);
+		}
+	}
+
+	/**
+	 * Goes through all of the tags, and for any that match a component in the registry, sets it with the matching component.
+	 * Goes through all of the children also.
+	 * @param {Element} element
+	 */
+	_setComponents(element) {
+		const registryEntry = Component._registry.get(element.tagName.toLowerCase());
+		if (registryEntry !== undefined) {
+			// Get the attributes.
+			/** @type {Map<string, any>} */
+			const attributes = new Map();
+			for (const attribute of element.attributes) {
+				let value = attribute.value;
+				if (value.startsWith('{{') && value.endsWith('}}')) {
+					value = attribute.value.substring(2, attribute.value.length - 2);
+					if (this[value] instanceof Function) {
+						value = this[value].bind(this);
+					}
+					else {
+						value = this[value];
+					}
+				}
+				attributes.set(attribute.name, value);
+			}
+			// Get the reference id.
+			const ref = attributes.get('ref') || '';
+			// Get the grandchildren.
+			const children = [];
+			for (const child of element.childNodes) {
+				children.push(child);
+				element.removeChild(child);
+			}
+			const component = this.__insertComponent(registryEntry.constructor, element.parentElement, element, ref, attributes, children);
+			element.parentElement.removeChild(element);
+			return component;
+		}
+		else {
+			for (const child of element.children) {
+				this._setComponents(child);
+			}
 		}
 	}
 
