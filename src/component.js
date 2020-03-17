@@ -1,9 +1,4 @@
 /**
- * @template {Component} T
- * @typedef {new (ref:string, attributes:Map<string, any>, children:Node[]) => T} ComponentType
- */
-
-/**
  * A base component from which other components can extend.
  * Each subclass can have an `html` and a `style` property to add style to the components.
  * Only the most derived subclass's `html` property will be used.
@@ -11,11 +6,9 @@
 export default class Component {
 	/**
 	 * Constructs a component.
-	 * @param {string} [ref = ''] - The reference of the component, if it has one.
-	 * @param {Map<string, any>} [attributes = new Map()] - The attributes passed as if it were <Component attrib=''...>
-	 * @param {Node[]} [children = []] - The children of the node as if it were <Component><child1/>...</Component>
+	 * @param {Component.Params} params
 	 */
-	constructor(ref = '', attributes = new Map(), children = []) {
+	constructor(params) {
 		// Make sure the component is registered.
 		let registryEntry = Component._registry.get(this.constructor.name.toLowerCase());
 		if (registryEntry === undefined) {
@@ -26,7 +19,7 @@ export default class Component {
 		 * The reference of the component.
 		 * @type {string}
 		 */
-		this._ref = ref;
+		this._ref = params.ref;
 
 		/**
 		 * The root elements.
@@ -101,7 +94,7 @@ export default class Component {
 		if (this._elementRefs.has('content')) {
 			const contentElement = this._elementRefs.get('content');
 			this.__setHtml(contentElement, '');
-			for (const child of children) {
+			for (const child of params.children) {
 				contentElement.appendChild(child);
 			}
 			this._setRefs(contentElement);
@@ -136,7 +129,7 @@ export default class Component {
 	/**
 	 * Gets the element with the reference. Returns null if not found.
 	 * @param {string} ref - The reference.
-	 * @returns {Element}
+	 * @returns {HTMLElement}
 	 */
 	__element(ref) {
 		return this._elementRefs.get(ref) || null;
@@ -176,17 +169,15 @@ export default class Component {
 	/**
 	 * Sets a new component as a child of *parent* right before the child *beforeChild*.
 	 * @template {Component} T
-	 * @param {ComponentType<T>} ComponentType
+	 * @param {new (params:Component.Params) => T} ComponentType
 	 * @param {Element} parentElement
 	 * @param {Node} beforeChild
-	 * @param {string} ref
-	 * @param {Map<string, any>} attributes
-	 * @param {Node[]} children
+	 * @param {Component.Params} params
 	 * @returns {T}
 	 */
-	__insertComponent(ComponentType, parentElement, beforeChild, ref, attributes, children) {
+	__insertComponent(ComponentType, parentElement, beforeChild, params) {
 		// Create the component.
-		const newComponent = new ComponentType(ref, attributes, children);
+		const newComponent = new ComponentType(params);
 
 		// Add it to the list of components.
 		this._components.add(newComponent);
@@ -202,8 +193,8 @@ export default class Component {
 		}
 
 		// Set the reference, if there is one.
-		if (ref !== '') {
-			this._componentRefs.set(ref, newComponent);
+		if (params.ref !== '') {
+			this._componentRefs.set(params.ref, newComponent);
 		}
 		return newComponent;
 	}
@@ -278,9 +269,10 @@ export default class Component {
 	_setComponents(element) {
 		const registryEntry = Component._registry.get(element.tagName.toLowerCase());
 		if (registryEntry !== undefined) {
+			const params = new Component.Params();
+			// Get the reference id.
+			params.ref = params.attributes.get('ref') || '';
 			// Get the attributes.
-			/** @type {Map<string, any>} */
-			const attributes = new Map();
 			for (const attribute of element.attributes) {
 				let value = attribute.value;
 				if (value.startsWith('{{') && value.endsWith('}}')) {
@@ -292,17 +284,14 @@ export default class Component {
 						value = this[value];
 					}
 				}
-				attributes.set(attribute.name, value);
+				params.attributes.set(attribute.name, value);
 			}
-			// Get the reference id.
-			const ref = attributes.get('ref') || '';
 			// Get the grandchildren.
-			const children = [];
 			for (const child of element.childNodes) {
-				children.push(child);
+				params.children.push(child);
 				element.removeChild(child);
 			}
-			const component = this.__insertComponent(registryEntry.constructor, element.parentElement, element, ref, attributes, children);
+			const component = this.__insertComponent(registryEntry.constructor, element.parentElement, element, params);
 			element.parentElement.removeChild(element);
 			return component;
 		}
@@ -395,15 +384,8 @@ export default class Component {
 			throw new Error('A component named "' + this.name + '" is already registered.');
 		}
 
-		/** @type {RegistryEntry} */
-		const entry = {
-			constructor: this,
-			ancestors: [],
-			html: this.html ? this.html.replace(/[\t\n]+/g, '').trim() : '',
-			css: this.css ? this.css.trim() : '',
-			styleElem: null,
-			styleCount: 0
-		};
+		/** @type {Component.RegistryEntry} */
+		const entry = new Component.RegistryEntry(this);
 
 		entry.ancestors.push(entry);
 
@@ -423,22 +405,77 @@ export default class Component {
 	}
 }
 
+Component.Params = class {
+	constructor() {
+		/**
+		 * The reference of the component, if it has one.
+		 * @type {string}
+		 */
+		this.ref = '';
+
+		/**
+		 * The attributes passed as if it were <Component attrib=''...>.
+		 * @type {Map<string, any>}
+		 */
+		this.attributes = new Map();
+
+		/**
+		 * The children of the node as if it were <Component><child1/>...</Component>.
+		 * @type {Node[]}
+		 */
+		this.children = [];
+	}
+};
+
+Component.RegistryEntry = class {
+	/**
+	 * @param {typeof Component} ComponentType
+	 */
+	constructor(ComponentType) {
+		/**
+		 * The constructor.
+		 * @type {typeof Component}
+		 */
+		this.constructor = ComponentType;
+
+		/**
+		 * The ancestor registry entries, including ComponentType and Component.
+		 * @type {Component.RegistryEntry[]}
+		 */
+		this.ancestors = [];
+
+		/**
+		 * The HTML for the ComponentType.
+		 * @type {string}
+		 */
+		this.html = ComponentType.html ? ComponentType.html.replace(/[\t\n]+/g, '').trim() : '';
+
+		/**
+		 * The CSS for the ComponentType.
+		 * @type {string}
+		 */
+		this.css = ComponentType.css ? ComponentType.css.trim() : '';
+
+		/**
+		 * The style element.
+		 * @type {HTMLStyleElement}
+		 */
+		this.styleElem = null;
+
+		/**
+		 * The number of components using this style. Includes ComponentType and all its descendants.
+		 * @type {number}
+		 */
+		this.styleCount = 0;
+	}
+};
+
 Component.html = '';
 Component.css = '';
 
 /**
- * @typedef RegistryEntry
- * @property {typeof Component} constructor
- * @property {RegistryEntry[]} ancestors
- * @property {string} html
- * @property {string} css
- * @property {HTMLStyleElement} styleElem
- * @property {number} styleCount
- */
-
-/**
  * The registered components, mapped from string to Component type.
- * @type {Map<string, RegistryEntry>}
+ * @type {Map<string, Component.RegistryEntry>}
  */
 Component._registry = new Map();
 

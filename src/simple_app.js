@@ -1,6 +1,6 @@
+import Component from './component';
 import App from './app';
 import ShowHide from './show_hide';
-/** @typedef {import('./component').default} Component */
 
 export default class SimpleApp extends App {
 	constructor() {
@@ -8,7 +8,7 @@ export default class SimpleApp extends App {
 
 		/**
 		 * A mapping from page names to page components.
-		 * @type {Map<string, new (app:SimpleApp) => Component>}
+		 * @type {Map<string, typeof Component>}
 		 * @private
 		 */
 		this._pages = new Map();
@@ -29,7 +29,7 @@ export default class SimpleApp extends App {
 	 * @param {string} title
 	 */
 	set title(title) {
-		this.__getElement('title').innerHTML = title;
+		this.__element('title').innerHTML = title;
 	}
 
 	/**
@@ -38,13 +38,13 @@ export default class SimpleApp extends App {
 	 */
 	set message(message) {
 		console.log(message);
-		this.__getElement('message').innerHTML = message;
+		this.__element('message').innerHTML = message;
 	}
 
 	/**
 	 * Registers a component as a page.
 	 * @param {string} pageName
-	 * @param {new (app:SimpleApp) => Component} PageClass
+	 * @param {typeof Component} PageClass
 	 */
 	registerPage(pageName, PageClass) {
 		this._pages.set(pageName, PageClass);
@@ -66,12 +66,15 @@ export default class SimpleApp extends App {
 		if (this._page instanceof Page) {
 			return;
 		}
-		const pageElement = this.__getElement('page');
+		const pageElement = this.__element('page');
 		if (pageElement instanceof HTMLElement) {
 			await ShowHide.hide(pageElement);
-			this.__unsetComponent('page');
+			this.__deleteComponent(this.__component('page'));
 		}
-		this._page = this.__setComponent(Page.bind(undefined, this), { ref: 'page', parentElement: pageElement });
+		const params = new Component.Params();
+		params.ref = 'page';
+		params.attributes.set('app', this);
+		this._page = this.__insertComponent(Page, pageElement, null, params);
 		if (pageElement instanceof HTMLElement) {
 			await ShowHide.show(pageElement);
 		}
@@ -84,7 +87,7 @@ SimpleApp.html = `
 	<div ref="page" class="page"></div>
 	`;
 
-SimpleApp.style = `
+SimpleApp.css = `
 	body {
 		margin: 0;
 		width: 100%;
@@ -139,6 +142,6 @@ SimpleApp.style = `
 	}
 	`;
 
-SimpleApp.register(SimpleApp);
+SimpleApp.register();
 
 App.setAppClass(SimpleApp);
