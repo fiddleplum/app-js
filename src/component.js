@@ -334,7 +334,7 @@ export default class Component {
 					throw new Error('Could not find ' + event + ' handler ' + attribute.value + ' for element with id ' + element.id);
 				}
 				// Get the callback bound to this.
-				const boundHandler = handler.bind(this, element);
+				const boundHandler = handler.bind(this);
 				// Remove the attribute so there's no conflict.
 				attributeNamesToRemove.push(attribute.name);
 				// Add the event listener.
