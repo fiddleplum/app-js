@@ -1,19 +1,19 @@
 import Component from './component';
 
-export default class SVG extends Component {
+export default class Icon extends Component {
 	/**
-	 * Constructs an SVG.
-	 * @param {Object<string, string>} [attributes] - The attributes passed as if it were <Component attrib=''...>
+	 * Constructor.
+	 * @param {Component.Params} params
 	 */
-	constructor(attributes) {
-		super();
+	constructor(params) {
+		super(params);
 
 		/**
 		 * The source.
 		 * @type {string}
 		 * @private
 		 */
-		this._src = attributes.src;
+		this._src = params.attributes.get('src');
 
 		if (this._src !== undefined) {
 			this._update();
@@ -37,11 +37,11 @@ export default class SVG extends Component {
 			const template = document.createElement('template');
 			template.innerHTML = text.trim();
 			if (template.content.children.length !== 1 || !(template.content.firstElementChild instanceof SVGElement)) {
-				throw new Error('SVG Source is not a vald .svg file.');
+				throw new Error('The source ' + this._src + ' is not a vald .svg file.');
 			}
 			const svg = template.content.firstElementChild;
 			// Remove the old children.
-			const rootElement = this.__getElement('svg');
+			const rootElement = this.__element('root');
 			while (rootElement.lastChild !== null) {
 				rootElement.removeChild(rootElement.lastChild);
 			}
@@ -55,5 +55,6 @@ export default class SVG extends Component {
 	}
 }
 
-SVG.html = `<svg ref="root"></svg>
-	`;
+Icon.html = `<svg ref="root"></svg>`;
+
+Icon.register();
