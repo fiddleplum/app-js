@@ -2,6 +2,7 @@ import App from './app';
 import SimpleApp from './simple_app';
 import Component from './component';
 import Font from './font';
+import Icon from './icon';
 import Router from './router';
 import ShowHide from './show_hide';
 import State from './state';
@@ -13,6 +14,7 @@ export {
 	SimpleApp,
 	Component,
 	Font,
+	Icon,
 	Router,
 	ShowHide,
 	State,
