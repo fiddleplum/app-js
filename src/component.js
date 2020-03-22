@@ -35,7 +35,7 @@ export default class Component {
 
 		/**
 		 * The mapping of references to elements.
-		 * @type {Map<string, HTMLElement>}
+		 * @type {Map<string, Element>}
 		 */
 		this._elementRefs = new Map();
 
@@ -54,7 +54,7 @@ export default class Component {
 
 			// Set the event handlers and child components.
 			for (const node of this._rootNodes) {
-				if (node instanceof HTMLElement) {
+				if (node instanceof Element) {
 					// Set the child components.
 					this._setComponents(node);
 
@@ -129,7 +129,7 @@ export default class Component {
 	/**
 	 * Gets the element with the reference. Returns null if not found.
 	 * @param {string} ref - The reference.
-	 * @returns {HTMLElement}
+	 * @returns {Element}
 	 */
 	__element(ref) {
 		return this._elementRefs.get(ref) || null;
@@ -147,7 +147,7 @@ export default class Component {
 	/**
 	 * Sets the inner html for an referenced element. Cleans up tabs and newlines.
 	 * Cleans up old handlers and components and adds new handlers and components.
-	 * @param {HTMLElement} element - The element.
+	 * @param {Element} element - The element.
 	 * @param {string} html - The HTMl.
 	 */
 	__setHtml(element, html) {
@@ -170,12 +170,12 @@ export default class Component {
 	 * Sets a new component as a child of *parent* right before the child *beforeChild*.
 	 * @template {Component} T
 	 * @param {new (params:Component.Params) => T} ComponentType
-	 * @param {Element} parentElement
+	 * @param {Node} parentNode
 	 * @param {Node} beforeChild
 	 * @param {Component.Params} params
 	 * @returns {T}
 	 */
-	__insertComponent(ComponentType, parentElement, beforeChild, params) {
+	__insertComponent(ComponentType, parentNode, beforeChild, params) {
 		// Create the component.
 		const newComponent = new ComponentType(params);
 
@@ -185,10 +185,10 @@ export default class Component {
 		// Connect the component to its parent.
 		for (const rootNode of newComponent._rootNodes) {
 			if (beforeChild !== null) {
-				parentElement.insertBefore(rootNode, beforeChild);
+				parentNode.insertBefore(rootNode, beforeChild);
 			}
 			else {
-				parentElement.appendChild(rootNode);
+				parentNode.appendChild(rootNode);
 			}
 		}
 
@@ -224,7 +224,7 @@ export default class Component {
 
 	/**
 	 * Sets the refs for the node and its children.
-	 * @param {HTMLElement} element
+	 * @param {Element} element
 	 */
 	_setRefs(element) {
 		if (element.classList.contains('Component')) {
@@ -291,8 +291,8 @@ export default class Component {
 				params.children.push(child);
 				element.removeChild(child);
 			}
-			const component = this.__insertComponent(registryEntry.constructor, element.parentElement, element, params);
-			element.parentElement.removeChild(element);
+			const component = this.__insertComponent(registryEntry.constructor, element.parentNode, element, params);
+			element.parentNode.removeChild(element);
 			return component;
 		}
 		else {
