@@ -6,9 +6,9 @@
 export default class Component {
 	constructor() {
 		// Make sure the component is registered.
-		let registryEntry = Component._registry.get(this.constructor.name.toLowerCase());
+		let registryEntry = Component._registry.get(this.constructor.name);
 		if (registryEntry === undefined) {
-			throw new Error('The component "' + this.constructor.name + '" has not been registered.');
+			registryEntry = Component.register(Object.getPrototypeOf(this).constructor);
 		}
 
 		/**
@@ -46,8 +46,8 @@ export default class Component {
 					this._setEventHandlersFromElemAttributes(node);
 
 					// Add the classes to the root element.
-					for (const ancestor of registryEntry.ancestors) {
-						node.classList.add(ancestor.constructor.name);
+					for (const ancestorEntry of registryEntry.ancestorEntries) {
+						node.classList.add(ancestorEntry.constructor.name);
 					}
 				}
 			}
@@ -55,8 +55,8 @@ export default class Component {
 
 		// Set the style element.
 		let lastStyleElem = null;
-		for (let i = 0; i < registryEntry.ancestors.length; i++) {
-			const ancestorEntry = registryEntry.ancestors[i];
+		for (let i = 0; i < registryEntry.ancestorEntries.length; i++) {
+			const ancestorEntry = registryEntry.ancestorEntries[i];
 
 			// Create the ancestor's style element if it doesn't already exist, and increment the use count.
 			if (ancestorEntry.css !== '') {
@@ -82,10 +82,10 @@ export default class Component {
 		}
 
 		// Remove the style elements of the component and its ancestors.
-		const registryEntry = Component._registry.get(this.constructor.name.toLowerCase());
-		for (let i = 0; i < registryEntry.ancestors.length; i++) {
+		const registryEntry = Component._registry.get(this.constructor.name);
+		for (let i = 0; i < registryEntry.ancestorEntries.length; i++) {
 			// Decrement the use count of the ancestor's style element and remove it if the use count is zero.
-			const ancestorEntry = registryEntry.ancestors[i];
+			const ancestorEntry = registryEntry.ancestorEntries[i];
 			if (ancestorEntry.styleElem !== null) {
 				ancestorEntry.styleCount -= 1;
 				if (ancestorEntry.styleCount === 0) {
@@ -173,6 +173,22 @@ export default class Component {
 
 		// Call its destroy function.
 		component.__destroy();
+	}
+
+	/**
+	 * Adds an event listener to an element.
+	 * @param {string} ref
+	 * @param {string} event
+	 * @param {(event:Event, ...params:any) => void} callback
+	 * @param {...any} params
+	 */
+	__on(ref, event, callback, ...params) {
+		const element = this.__element(ref);
+		if (element === null) {
+			console.trace();
+			throw new Error('The reference "' + ref + '" is invalid.');
+		}
+		element.addEventListener(event, callback.bind(this, ...params));
 	}
 
 	/**
@@ -290,54 +306,19 @@ export default class Component {
 
 	/**
 	 * Registers a component.
+	 * @param {typeof Component} ComponentType
+	 * @returns {Component.RegistryEntry} registryEntry
 	 */
-	static register() {
-		if (this._registry.has(this.name.toLowerCase())) {
-			throw new Error('A component named "' + this.name + '" is already registered.');
-		}
-
+	static register(ComponentType) {
 		/** @type {Component.RegistryEntry} */
-		const entry = new Component.RegistryEntry(this);
-
-		entry.ancestors.push(entry);
-
-		// Populate the ancestors.
-		let ancestor = this;
-		while (true) {
-			if (ancestor === Component) {
-				break;
-			}
-			ancestor = Object.getPrototypeOf(ancestor);
-			const ancestorEntry = Component._registry.get(ancestor.name.toLowerCase());
-			entry.ancestors.push(ancestorEntry);
-		}
+		const entry = new Component.RegistryEntry(ComponentType);
 
 		// Set the registry entry.
-		this._registry.set(this.name.toLowerCase(), entry);
+		this._registry.set(ComponentType.name, entry);
+
+		return entry;
 	}
 }
-
-Component.Params = class {
-	constructor() {
-		/**
-		 * The reference of the component, if it has one.
-		 * @type {string}
-		 */
-		this.ref = '';
-
-		/**
-		 * The attributes passed as if it were <Component attrib=''...>.
-		 * @type {Map<string, any>}
-		 */
-		this.attributes = new Map();
-
-		/**
-		 * The children of the node as if it were <Component><child1/>...</Component>.
-		 * @type {Node[]}
-		 */
-		this.children = [];
-	}
-};
 
 Component.RegistryEntry = class {
 	/**
@@ -354,7 +335,7 @@ Component.RegistryEntry = class {
 		 * The ancestor registry entries, including ComponentType and Component.
 		 * @type {Component.RegistryEntry[]}
 		 */
-		this.ancestors = [];
+		this.ancestorEntries = [];
 
 		/**
 		 * The HTML for the ComponentType.
@@ -379,6 +360,32 @@ Component.RegistryEntry = class {
 		 * @type {number}
 		 */
 		this.styleCount = 0;
+
+		// Get the ancestors.
+		const ancestors = [];
+		let ancestor = ComponentType;
+		while (true) {
+			ancestors.unshift(ancestor);
+			if (ancestor === Component) {
+				break;
+			}
+			ancestor = Object.getPrototypeOf(ancestor);
+		}
+
+		// Populate the ancestor entries.
+		for (let i = 0; i < ancestors.length; i++) {
+			const ancestor = ancestors[i];
+			if (ancestor !== ComponentType) {
+				let ancestorEntry = Component._registry.get(ancestor.name);
+				if (ancestorEntry === undefined) {
+					ancestorEntry = Component.register(ancestor);
+				}
+				this.ancestorEntries.push(ancestorEntry);
+			}
+			else {
+				this.ancestorEntries.push(this);
+			}
+		}
 	}
 };
 
@@ -390,5 +397,3 @@ Component.css = '';
  * @type {Map<string, Component.RegistryEntry>}
  */
 Component._registry = new Map();
-
-Component.register();

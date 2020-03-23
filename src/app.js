@@ -14,7 +14,7 @@ export default class App extends Component {
 	 * Constructs a component inside the body.
 	 */
 	constructor() {
-		super(new Component.Params());
+		super();
 
 		/**
 		 * The router system.
@@ -55,8 +55,6 @@ App.css = `
 		user-select: none;
 	}
 	`;
-
-App.register();
 
 /**
  * The subclass of App to be instantiated.

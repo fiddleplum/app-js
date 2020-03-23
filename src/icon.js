@@ -3,17 +3,16 @@ import Component from './component';
 export default class Icon extends Component {
 	/**
 	 * Constructor.
-	 * @param {Component.Params} params
 	 */
-	constructor(params) {
-		super(params);
+	constructor() {
+		super();
 
 		/**
 		 * The source.
 		 * @type {string}
 		 * @private
 		 */
-		this._src = params.attributes.get('src');
+		this._src = '';
 
 		if (this._src !== undefined) {
 			this._update();
@@ -57,4 +56,3 @@ export default class Icon extends Component {
 
 Icon.html = `<svg ref="root"></svg>`;
 
-Icon.register();

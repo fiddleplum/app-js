@@ -1,6 +1,6 @@
-import Component from './component';
 import App from './app';
 import ShowHide from './show_hide';
+/** @typedef {import('./component').default} Component */
 
 export default class SimpleApp extends App {
 	constructor() {
@@ -8,7 +8,7 @@ export default class SimpleApp extends App {
 
 		/**
 		 * A mapping from page names to page components.
-		 * @type {Map<string, typeof Component>}
+		 * @type {Map<string, new (app:SimpleApp) => Component>}
 		 * @private
 		 */
 		this._pages = new Map();
@@ -44,7 +44,7 @@ export default class SimpleApp extends App {
 	/**
 	 * Registers a component as a page.
 	 * @param {string} pageName
-	 * @param {typeof Component} PageClass
+	 * @param {new (app:SimpleApp) => Component} PageClass
 	 */
 	registerPage(pageName, PageClass) {
 		this._pages.set(pageName, PageClass);
@@ -69,12 +69,9 @@ export default class SimpleApp extends App {
 		const pageElement = this.__element('page');
 		if (pageElement instanceof HTMLElement) {
 			await ShowHide.hide(pageElement);
-			this.__deleteComponent(this.__component('page'));
+			this.__deleteComponent(this._page);
 		}
-		const params = new Component.Params();
-		params.ref = 'page';
-		params.attributes.set('app', this);
-		this._page = this.__insertComponent(Page, pageElement, null, params);
+		this._page = this.__insertComponent(pageElement, null, Page, this);
 		if (pageElement instanceof HTMLElement) {
 			await ShowHide.show(pageElement);
 		}
@@ -141,7 +138,5 @@ SimpleApp.css = `
 		transition: opacity .125s;
 	}
 	`;
-
-SimpleApp.register();
 
 App.setAppClass(SimpleApp);
